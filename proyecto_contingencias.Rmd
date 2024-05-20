@@ -1,0 +1,210 @@
+---
+title: "proyecto_contingencias"
+author: "Alejandro Brenes - C21319, Santiago Fernández - C22943, Félix Madrigal -
+  C24459 y Eyeri Méndez - C24765"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Proyecto contingencias I
+
+## Descarga de datos
+
+Se inicia con la descarga de los datos, para la base de datos de los empleados se agregaron columnas con la edad y el año de nacimiento, para los valores tqx se realizó una tabla dinámica separada por cada sexo, todos los cambios fueron hechos desde MS Excel.
+
+```{r descarga_datos}
+library(readxl)
+empleados <- read_excel("datos/Base de datos.xlsx")
+qx.hombres <- read_excel("datos/tavid2000-2150.xlsx", 
+    sheet = "Sexo_1_limpio")
+qx.mujeres <- read_excel("datos/tavid2000-2150.xlsx", 
+    sheet = "Sexo_2_limpio")
+```
+
+Se cambia el nombre y el orden las columnas de la base de empleados.
+
+```{r corr_columnas}
+library(dplyr)
+
+# Nombre de columnas
+empleados <- empleados %>% 
+  rename(
+    id = "Número de empleado",
+    fecha_nac = "Fecha de nacimiento",
+    sexo = Sexo,
+    edad = Edad,
+    anno_nac = Anno_nac
+  )
+
+# Se reordena el DataFrame
+empleados <- empleados %>% 
+  select(id, sexo, edad, anno_nac, fecha_nac)
+```
+
+La edad de las personas se calculó para 2023, se requiere la de 2024, por los que se suma una unidad a esa columna.
+
+```{r corr_edad}
+empleados$edad <- empleados$edad + 1
+```
+
+## Modelo determinístico
+
+### Proyección demográfica de población de empleados activos
+
+Se creará una función para determinar los empleados activos que continúan vivos cada año por sexo.
+
+```{r fun_activos_vivos}
+# La siguiente funcion recibe el DataFrame de los empleados (df.empleados), el DataFrame de probabilidades de muertes por sexo (df.muertes) y el sexo a calcular su proyección (sexo). Es importante que el sexo coincida con el sexo de las probabilidades de muerte, de lo contrario, podría conducir a errores en el cálculo. Se devuelve una lista con: un DataFrame con la población activa que sigue viva por cada año y la matriz de sobrevivientes por edad
+pob.activos <- function(df.empleados, df.muertes, sexo) {
+  # Se filtra el DataFrame por el sexo
+  if (sexo == "M") {
+    df.empleados <- df.empleados %>%
+      filter(sexo == "M")
+  }
+  else if (sexo == "F") {
+    df.empleados <- df.empleados %>%
+      filter(sexo == "F")
+  }
+  else{
+    return("El sexo del parámetro no fue encontrado")
+  }
+  
+  # Las edades de las personas que nos interesan para el estudio
+  edades <- c(min(df.empleados$edad):65)
+  
+  # Contamos la cantidad de personas que hay por cada edad
+  num.personas <- as.vector(table(as.factor(df.empleados$edad)))
+  
+  # Lista para guardar las probabilidades de sobrevivencia
+  lista.tpx <- list()
+  
+  # Se itera para obtener las probabilidades de sobrevivencia de cada edad
+  for (edad in edades) {
+    # Se obtiene un vector de qx de forma diagonal
+    tqx <-
+      sapply(0:(65 - edad), function(j)
+        as.numeric(df.muertes[edad + 1 + j,  26 + j]))
+    
+    # Calcula los tpx a partir de los tqx de forma acumulativa
+    tpx <-
+      c(1, sapply(1:(length(tqx)), function(k)
+        prod(1 - tqx[1:k])))
+    
+    # La longitud de los tpx va disminuyendo, por lo que calculamos los 0 necesarios para formar una matriz posteriormente
+    if ((47 - length(tpx)) > 0) {
+      tpx <- c(tpx, rep(0, (47 - length(tpx))))
+    }
+    
+    lista.tpx[[(edad - 20)]] <- tpx
+  }
+  
+  # Con todos los vectores en una lista, creamos la matriz, en donde cada fila es la probabilidad de sobrevivencia de una persona de edad x
+  matriz.prob <- do.call(rbind, lista.tpx)
+  
+  # Se realiza la multiplicación de personas por su probabilidad de sobrevivencia
+  matriz.final <- num.personas * matriz.prob
+  
+  # Se crea un dataframe con la cantidad de personas restantes por año, para esto se sumarán las columnas de la matriz anterior
+  df.resultado <-
+    data.frame(anno = c(2024:(2091 - min(edades))),
+               # 2024 + 67 - min(edades)
+               trabajadores = colSums(matriz.final))
+  
+  # Se devolverá una lista, primero tendrá el resultado en DataFrame y posteriormente tendrá la matriz que indica cuántas personas se pensionarion cada año
+  lista.res <- list(df.resultado, matriz.final)
+  
+  return(lista.res)
+}
+```
+
+Se guardan las proyecciones demográficas para hombres y mujeres.
+
+```{r act_vivos}
+# Hombres activos vivos
+activos.vivosh <- pob.activos(empleados, qx.hombres, "M")
+
+# Mujeres activas vivas
+activos.vivosm <- pob.activos(empleados, qx.mujeres, "F")
+```
+
+### Proyección demográfica de defunciones de empleados activos
+
+Se procede a crear la función de muertes de empleados activos cada año.
+
+```{r fun_activos_muertos}
+# La siguiente funcion recibe el DataFrame de los empleados (df.empleados), el DataFrame de probabilidades de muertes por sexo (df.muertes) y el sexo a calcular su proyección (sexo). Es importante que el sexo coincida con el sexo de las probabilidades de muerte, de lo contrario, podría conducir a errores en el cálculo. Se devuelve una lista con: un DataFrame con los fallecidos por cada año y la matriz de fallecidos por edad
+def.activos <- function(df.empleados, df.muertes, sexo) {
+  # Se filtra el DataFrame por el sexo
+  if (sexo == "M") {
+    df.empleados <- df.empleados %>%
+      filter(sexo == "M")
+  }
+  else if (sexo == "F") {
+    df.empleados <- df.empleados %>%
+      filter(sexo == "F")
+  }
+  else{
+    return("El sexo del parámetro no fue encontrado")
+  }
+  
+  # Las edades de las personas que nos interesan para el estudio
+  edades <- c(min(df.empleados$edad):65)
+  
+  # Contamos la cantidad de personas que hay por cada edad
+  num.personas <- as.vector(table(as.factor(df.empleados$edad)))
+  
+  # Lista para guardar las probabilidades de sobrevivencia
+  lista.tqx <- list()
+  
+  # Se itera para obtener las probabilidades de sobrevivencia de cada edad
+  for (edad in edades) {
+    # Se obtiene un vector de qx de forma diagonal
+    qx <-
+      sapply(0:(65 - edad), function(j)
+        as.numeric(df.muertes[edad + 1 + j,  26 + j]))
+    
+    # Calcula los tpx a partir de los tqx de forma acumulativa
+    tpx <-
+      sapply(1:(length(qx)), function(k)
+        prod(1 - qx[1:k]))
+    
+    # Calcula los t|qx a partir de los qx y los tpx de forma acumulativa
+    tqx <- c(0, qx[1], (tpx * qx))
+      #c(0, qx[1], sapply(1:(length(qx)), function(l)
+        #(tpx[(l)] * qx[l])))
+    
+    # La longitud de los tqx va disminuyendo, por lo que calculamos los 0 necesarios para formar una matriz posteriormente
+    if ((47 - length(tqx)) > 0) {
+      tqx <- c(tqx, rep(0, (47 - length(tqx))))
+    }
+    
+    lista.tqx[[(edad - 20)]] <- tqx
+  }
+  
+  # Con todos los vectores en una lista, creamos la matriz, en donde cada fila es la probabilidad de sobrevivencia de una persona de edad x
+  matriz.prob <- matrix(unlist(lista.tqx), nrow = length(lista.tqx), byrow = TRUE)
+  
+  # Se realiza la multiplicación de personas por su probabilidad de muerte
+  matriz.final <- as.vector(num.personas) * as.matrix(matriz.prob)
+  
+  # Se crea un dataframe con la cantidad de personas restantes por año, para esto se sumarán las columnas de la matriz anterior
+  df.resultado <-
+    data.frame(anno = c(2024:(2091 - min(edades))),
+               # 2024 + 67 - min(edades)
+               trabajadores = colSums(matriz.final))
+  
+  # Se devolverá una lista, primero tendrá el resultado en DataFrame y posteriormente tendrá la matriz que indica cuántas personas se pensionarion cada año
+  lista.res <- list(df.resultado, matriz.final)
+  return(lista.res)
+}
+```
+
+Se guardan los empleados activos fallecidos durante cada año (se comprueba que son los valores correctos al sumar los valores de la segunda columna del DataFrame de las funciones de empleados activos).
+
+```{r act_muertos}
+# Hombres activos fallecidos
+activos.fallecidosh <- def.activos(empleados, qx.hombres, "M")
+
+# Mujeres activas fallecidas
+activos.fallecidosm <- def.activos(empleados, qx.mujeres, "F")
+```
