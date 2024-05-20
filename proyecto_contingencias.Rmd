@@ -91,8 +91,8 @@ pob.activos <- function(df.empleados, df.muertes, sexo) {
         prod(1 - tqx[1:k])))
     
     # La longitud de los tpx va disminuyendo, por lo que calculamos los 0 necesarios para formar una matriz posteriormente
-    if ((47 - length(tpx)) > 0) {
-      tpx <- c(tpx, rep(0, (47 - length(tpx))))
+    if ((48 - length(tpx)) > 0) {
+      tpx <- c(tpx, rep(0, (48 - length(tpx))))
     }
     
     lista.tpx[[(edad - 20)]] <- tpx
@@ -106,8 +106,8 @@ pob.activos <- function(df.empleados, df.muertes, sexo) {
   
   # Se crea un dataframe con la cantidad de personas restantes por año, para esto se sumarán las columnas de la matriz anterior
   df.resultado <-
-    data.frame(anno = c(2024:(2091 - min(edades))),
-               # 2024 + 67 - min(edades)
+    data.frame(anno = c(2023:(2091 - min(edades))),
+               # 2024 + 65 + 1 - min(edades)
                trabajadores = colSums(matriz.final))
   
   # Se devolverá una lista, primero tendrá el resultado en DataFrame y posteriormente tendrá la matriz que indica cuántas personas se pensionarion cada año
@@ -121,10 +121,10 @@ Se guardan las proyecciones demográficas para hombres y mujeres.
 
 ```{r act_vivos}
 # Hombres activos vivos
-activos.vivosh <- pob.activos(empleados, qx.hombres, "M")
+(activos.vivosh <- pob.activos(empleados, qx.hombres, "M"))
 
 # Mujeres activas vivas
-activos.vivosm <- pob.activos(empleados, qx.mujeres, "F")
+(activos.vivosm <- pob.activos(empleados, qx.mujeres, "F"))
 ```
 
 ### Proyección demográfica de defunciones de empleados activos
@@ -174,8 +174,8 @@ def.activos <- function(df.empleados, df.muertes, sexo) {
         #(tpx[(l)] * qx[l])))
     
     # La longitud de los tqx va disminuyendo, por lo que calculamos los 0 necesarios para formar una matriz posteriormente
-    if ((47 - length(tqx)) > 0) {
-      tqx <- c(tqx, rep(0, (47 - length(tqx))))
+    if ((48 - length(tqx)) > 0) {
+      tqx <- c(tqx, rep(0, (48 - length(tqx))))
     }
     
     lista.tqx[[(edad - 20)]] <- tqx
@@ -189,8 +189,8 @@ def.activos <- function(df.empleados, df.muertes, sexo) {
   
   # Se crea un dataframe con la cantidad de personas restantes por año, para esto se sumarán las columnas de la matriz anterior
   df.resultado <-
-    data.frame(anno = c(2024:(2091 - min(edades))),
-               # 2024 + 67 - min(edades)
+    data.frame(anno = c(2023:(2091 - min(edades))),
+               # 2024 + 65 + 2 - min(edades)
                trabajadores = colSums(matriz.final))
   
   # Se devolverá una lista, primero tendrá el resultado en DataFrame y posteriormente tendrá la matriz que indica cuántas personas se pensionarion cada año
@@ -203,8 +203,8 @@ Se guardan los empleados activos fallecidos durante cada año (se comprueba que 
 
 ```{r act_muertos}
 # Hombres activos fallecidos
-activos.fallecidosh <- def.activos(empleados, qx.hombres, "M")
+(activos.fallecidosh <- def.activos(empleados, qx.hombres, "M"))
 
 # Mujeres activas fallecidas
-activos.fallecidosm <- def.activos(empleados, qx.mujeres, "F")
+(activos.fallecidosm <- def.activos(empleados, qx.mujeres, "F"))
 ```
