@@ -276,19 +276,18 @@ pob.pensionados <- function(df.pensionados, df.muertes){
   matriz.prob <- as.matrix(df.muertes[66:nrow(df.muertes), 26:ncol(df.muertes)])
   
   # Se crea un vector que contendrá la cantidad de pensionados que siguen vivos cada año
-  # Se inicializa así porque la cantidad de pensionados vivos para el primer año es simplemente la cantidad de pensionados que entran ese año
-  pensionados <- c(df.pensionados$pensionados[1])
+  pensionados <- c()
   
   # Los años de interés para el proyecto
   anno <- c(2024:2119)
   
-  for(i in 2:96){
+  for(i in 1:96){
     
     lista.pensionados <- list()
     
     if((i - 51) > 0){
     
-      for(j in (i-50):(i-1)){
+      for(j in (i-50):i){
         
         if(j <= 45){
           
@@ -302,27 +301,25 @@ pob.pensionados <- function(df.pensionados, df.muertes){
       
     } else{
       
-      contador <- 1
-      
-      for(j in 1:(i-1)){
+      for(j in 1:i){
         
-        if(contador <= 45){
+        if(j <= 45){
+          
+          if(j == i){
+            
+            probabilidad <- 1
+            
+          } else{
         
-          probabilidad <- prod(sapply(0:(i-j-1), function(k) (1 - matriz.prob[1+k, j+k])))
+            probabilidad <- prod(sapply(0:(i-j-1), function(k) (1 - matriz.prob[1+k, j+k])))
+            
+          } # fin if-else
           
-          lista.pensionados <- append(lista.pensionados, df.pensionados$pensionados[contador] * probabilidad)
-          
-          contador <- contador + 1
+          lista.pensionados <- append(lista.pensionados, df.pensionados$pensionados[j] * probabilidad)
         
         } # fin if
         
       } # fin for j
-      
-      if(i <= 45){
-      
-        lista.pensionados <- append(lista.pensionados, df.pensionados$pensionados[i])
-        
-      } # fin if
       
     } # fin if-else
     
