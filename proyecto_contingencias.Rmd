@@ -204,6 +204,7 @@ def.activos <- function(df.empleados, df.muertes, sexo) {
   
   # Se devolverá una lista, primero tendrá el resultado en DataFrame y posteriormente tendrá la matriz que indica cuántas personas se pensionarion cada año
   lista.res <- list(df.resultado, matriz.final)
+  
   return(lista.res)
 }
 ```
@@ -217,3 +218,235 @@ activos.fallecidosh <- def.activos(empleados, qx.hombres, "M")
 # Mujeres activas fallecidas
 activos.fallecidosm <- def.activos(empleados, qx.mujeres, "F")
 ```
+
+### Proyección demográfica de pensionados
+
+Primeramente se determinarán los pensionados que entran cada año para cada sexo, usando lo hecho en el punto a).
+
+```{r pensionados_por_anno}
+library(data.table)
+
+# Se extraen las matrices de sobrevivientes por edad para cada sexo
+matriz.hombres <- activos.vivosh[[2]]
+matriz.mujeres <- activos.vivosm[[2]]
+
+# Función para obtener las entradas de una matriz que tengan a su derecha una entrada igual a 0 (en nuestro contexto, las personas pensionadas)
+personas.pensionadas <- function(matriz) {
+  
+  copia = copy(matriz)
+  
+  # Se encuentran las posiciones donde el valor a la derecha es igual a 0
+  posiciones <- which(copia[, -ncol(copia)] != 0 & copia[, -1] == 0, arr.ind = TRUE)
+  
+  # Luego se extraen los valores de la matriz en esas posiciones
+  valores <- copia[posiciones]
+  
+  return(valores)
+  
+}
+
+# Se crean los años donde entran pensionados
+anno <- c(2024:2068)
+
+# Se extraen los pensionados hombres usando la función anterior
+pensionados <- c(personas.pensionadas(matriz.hombres))
+
+# Se crea el dataframe de pensionados hombres que entran por año
+df.pensionadosh <- data.frame(anno = anno, pensionados = pensionados)
+
+# Se extraen las pensionadas mujeres usando la función anterior
+pensionados <- c(personas.pensionadas(matriz.mujeres))
+
+# Se crea el dataframe de pensionadas mujeres que entran por año
+df.pensionadosm <- data.frame(anno = anno, pensionados = pensionados)
+
+```
+
+Posteriormente se crea la función para determinar los pensionados que continúan vivos cada año por sexo.
+
+```{r fun_pensionados_vivos}
+
+# Función que recibe el DataFrame de los pensionados por sexo (df.pensionados) y el DataFrame de probabilidades de muertes por sexo (df.muertes).
+
+# Devuelve un DataFrame con la cantidad de pensionados vivos que sigue viva cada año.
+
+pob.pensionados <- function(df.pensionados, df.muertes){
+  
+  # Se obtienen las probabilidades de muerte para las edades de 65 en adelante y del año 2024 en adelante
+  matriz.prob <- as.matrix(df.muertes[66:nrow(df.muertes), 26:ncol(df.muertes)])
+  
+  # Se crea un vector que contendrá la cantidad de pensionados que siguen vivos cada año
+  # Se inicializa así porque la cantidad de pensionados vivos para el primer año es simplemente la cantidad de pensionados que entran ese año
+  pensionados <- c(df.pensionados$pensionados[1])
+  
+  # Los años de interés para el proyecto
+  anno <- c(2024:2119)
+  
+  for(i in 2:96){
+    
+    lista.pensionados <- list()
+    
+    if((i - 51) > 0){
+    
+      for(j in (i-50):(i-1)){
+        
+        if(j <= 45){
+          
+          probabilidad <- prod(sapply(0:(i-j-1), function(k) (1 - matriz.prob[1+k, j+k])))
+        
+          lista.pensionados <- append(lista.pensionados, df.pensionados$pensionados[j] * probabilidad)
+        
+        } # fin if
+          
+      } # fin for j
+      
+    } else{
+      
+      contador <- 1
+      
+      for(j in 1:(i-1)){
+        
+        if(contador <= 45){
+        
+          probabilidad <- prod(sapply(0:(i-j-1), function(k) (1 - matriz.prob[1+k, j+k])))
+          
+          lista.pensionados <- append(lista.pensionados, df.pensionados$pensionados[contador] * probabilidad)
+          
+          contador <- contador + 1
+        
+        } # fin if
+        
+      } # fin for j
+      
+      if(i <= 45){
+      
+        lista.pensionados <- append(lista.pensionados, df.pensionados$pensionados[i])
+        
+      } # fin if
+      
+    } # fin if-else
+    
+    pensionados <- c(pensionados, sum(unlist(lista.pensionados)))
+    
+  } # fin for i
+  
+  # Se crea el dataframe con los años y los pensionados vivos y se devuelve
+  df.final <- data.frame(anno = anno, pensionados = pensionados)
+  
+  return(df.final)
+  
+}
+
+```
+
+Se guardan las proyecciones demográficas de pensionados para hombres y mujeres.
+
+```{r proyeccion_pensionados}
+
+# Hombres pensionados vivos
+pensionados.vivosh <- pob.pensionados(df.pensionadosh, qx.hombres)
+
+# Mujeres pensionadas vivas
+pensionados.vivosm <- pob.pensionados(df.pensionadosm, qx.mujeres)
+
+```
+
+### Proyección demográfica de defunciones de pensionados
+
+Ahora se va a crear la función de muertes de pensionados para cada año.
+
+```{r fun_pensionados_muertos}
+
+# Funcion que recibe el DataFrame de los pensionados por sexo (df.pensionados) y el DataFrame de probabilidades de muertes por sexo (df.muertes).
+
+# Devuelve un DataFrame con los pensionados fallecidos por cada año.
+
+def.pensionados <- function(df.pensionados, df.muertes){
+  
+  # Se obtienen las probabilidades de muerte para las edades de 65 en adelante y del año 2024 en adelante
+  matriz.prob <- as.matrix(df.muertes[66:nrow(df.muertes), 26:ncol(df.muertes)])
+  
+  # Se crea un vector vacío que contendrá la cantidad de pensionados fallecidos cada año
+  pensionados <- c()
+  
+  # Los años de interés para el proyecto
+  anno <- c(2024:2119)
+  
+  for(i in 1:96){
+    
+    lista.pensionados <- list()
+    
+    if((i - 51) > 0){
+    
+      for(j in (i-50):(i-1)){
+        
+        if(j <= 45){
+          
+          probabilidad.sobrevivir <- prod(sapply(0:(i-j-1), function(k) (1 - matriz.prob[1+k, j+k])))
+          
+          probabilidad.muerte <- matriz.prob[i-j+1, i]
+        
+          lista.pensionados <- append(lista.pensionados, df.pensionados$pensionados[j] * probabilidad.sobrevivir * probabilidad.muerte)
+        
+        } # fin if
+          
+      } # fin for j
+      
+    } else{
+      
+      contador <- 1
+      
+      for(j in 1:i){
+        
+        if(contador <= 45){
+          
+          if(j == i){
+        
+            probabilidad.sobrevivencia <- 1
+          
+            probabilidad.muerte <- matriz.prob[1, j]
+          
+          } else{
+            
+            probabilidad.sobrevivencia <- prod(sapply(0:(i-j-1), function(k) (1 - matriz.prob[1+k, j+k])))
+            
+            probabilidad.muerte <- matriz.prob[i-j+1, i]
+            
+          } # fin if-else
+          
+          lista.pensionados <- append(lista.pensionados, df.pensionados$pensionados[contador] * probabilidad.sobrevivencia * probabilidad.muerte)
+          
+          contador <- contador + 1
+        
+        } # fin if
+        
+      } # fin for j
+      
+    } # fin if-else
+    
+    pensionados <- c(pensionados, sum(unlist(lista.pensionados)))
+    
+  } # fin for i
+  
+  df.final <- data.frame(anno = anno, pensionados = pensionados)
+  
+  return(df.final)
+  
+}
+
+```
+
+Ahora se guardan los pensionados fallecidos durante cada año.
+
+```{r pensionados_muertos}
+
+# Hombres pensionados fallecidos
+pensionados.fallecidosh <- def.pensionados(df.pensionadosh, qx.hombres)
+
+# Mujeres pensionadas fallecidas
+pensionados.fallecidosm <- def.pensionados(df.pensionadosm, qx.mujeres)
+
+```
+
+
+
