@@ -529,4 +529,48 @@ names(anualidades.m)[names(anualidades.m) == "año....df...1."] <- "año"
 
 ```
 
+### Proyección financiera de los pagos de beneficios de muerte de pensionados
+
+Se procede a realizar la funcion que calcula la proyeccion de los beneficios de los pesionados que mueren
+
+```{r benef.pensionados.muertos}
+
+#Funcion que recibe un df con los pensionados que mueren por ano
+
+#devuelve un df con el monto que se debe tener para poder cubrir esta cantidad de muertes cada anno
+def.proyeccion.finac.pen <- function(df.pensionados.fallecidos) {
+  
+  M <- 1e6
+  j <- 0.03
+  
+  #Se inicializa una lista del tamano de numero de filas del df para asi ir guardando los montos de todos los annos
+  costos <- numeric(nrow(df.pensionados.fallecidos))
+  
+  #el for recorre cada ano y cada cantidad de muertos por anno, considera la inflacion
+  for (i in 1:nrow(df.pensionados.fallecidos)) {
+    inflacion <- (1 + j)^(i - 1)
+    
+    #Clacula el monto ajustao por inflacion
+    costos[i] <- df.pensionados.fallecidos$pensionados[i] * M * inflacion
+  }
+  
+  # Crear un DataFrame con los resultados
+  df_costos <- data.frame(
+    anno = df.pensionados.fallecidos$anno,
+    costo = costos
+  )
+  
+  return(df_costos)
+}
+
+```
+
+Se aplica la funcion para los df ya establecidos tanto de hombres como mujeres
+
+```{r}
+# Aplicar la función a los pensionados fallecidos hombres y mujeres
+costos_pensionados_fallecidosh <- def.proyeccion.finac.pen(pensionados.fallecidosh)
+costos_pensionados_fallecidosm <- def.proyeccion.finac.pen(pensionados.fallecidosm)
+
+```
 
