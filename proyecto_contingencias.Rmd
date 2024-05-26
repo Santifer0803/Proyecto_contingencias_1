@@ -445,5 +445,50 @@ pensionados.fallecidosm <- def.pensionados(df.pensionadosm, qx.mujeres)
 
 ```
 
+### Proyección financiera de los pagos de beneficios de muerte de empleados activos
+
+Como primer paso, se extraen los dataframes necesarios. 
+
+```{r}
+library(dplyr)
+df.activos.fallecidosm <- as.data.frame(activos.fallecidosm[[1]])
+df.activos.fallecidosh <- as.data.frame(activos.fallecidosh[[1]])
+
+#eliminar 2023 con 0 muertes
+df.activos.fallecidosh <- df.activos.fallecidosh[-1, ]
+df.activos.fallecidosm <- df.activos.fallecidosm[-1, ]
+
+```
+
+Luego, se crea la funcion necesaria, recibe un dataframe para el calculo y devuelve otro con los resutados. Los años son los mismos, y para el cálculo se extrae la cantidad de muertes por año de empleados activos. 
+```{r}
+
+ben.muerte.activos <- function(df){
+  df.ben.muerte.activos = data.frame(
+    año <- df[, 1],
+    beneficios <- NA
+  )
+  vec_beneficios = c()
+  for (i in 1:47) {
+    beneficio <- (5000000)*((1 + 0.03)^i) * (df[i, 2]) 
+    vec_beneficios <- c(vec_beneficios, beneficio)
+  }
+  df.ben.muerte.activos$beneficios <- vec_beneficios
+  return(df.ben.muerte.activos)
+}
+
+```
+
+Se guardan y se limpian los resultados tanto para hombres como para mujeres
+```{r}
+ben.muerte.act.h <- ben.muerte.activos(df.activos.fallecidosh)
+ben.muerte.act.m <- ben.muerte.activos(df.activos.fallecidosm)
+
+ben.muerte.act.h <- ben.muerte.act.h[, -2]
+ben.muerte.act.m <- ben.muerte.act.m[, -2]
+
+names(ben.muerte.act.h)[names(ben.muerte.act.h) == "año....df...1."] <- "año"
+names(ben.muerte.act.m)[names(ben.muerte.act.m) == "año....df...1."] <- "año"
 
 
+```
