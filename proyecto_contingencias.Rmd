@@ -447,7 +447,7 @@ pensionados.fallecidosm <- def.pensionados(df.pensionadosm, qx.mujeres)
 
 ### Proyección financiera de los pagos de beneficios de muerte de empleados activos
 
-Como primer paso, se extraen los dataframes necesarios. 
+Como primer paso, se extraen los dataframes necesarios.
 
 ```{r}
 library(dplyr)
@@ -460,7 +460,8 @@ df.activos.fallecidosm <- df.activos.fallecidosm[-1, ]
 
 ```
 
-Luego, se crea la funcion necesaria, recibe un dataframe para el calculo y devuelve otro con los resutados. Los años son los mismos, y para el cálculo se extrae la cantidad de muertes por año de empleados activos. 
+Luego, se crea la funcion necesaria, recibe un dataframe para el calculo y devuelve otro con los resutados. Los años son los mismos, y para el cálculo se extrae la cantidad de muertes por año de empleados activos.
+
 ```{r}
 
 ben.muerte.activos <- function(df){
@@ -480,6 +481,7 @@ ben.muerte.activos <- function(df){
 ```
 
 Se guardan y se limpian los resultados tanto para hombres como para mujeres
+
 ```{r}
 ben.muerte.act.h <- ben.muerte.activos(df.activos.fallecidosh)
 ben.muerte.act.m <- ben.muerte.activos(df.activos.fallecidosm)
@@ -492,3 +494,39 @@ names(ben.muerte.act.m)[names(ben.muerte.act.m) == "año....df...1."] <- "año"
 
 
 ```
+
+### Proyección financiera de los pagos de anualidades
+
+La función recibe un df (pensionados/as vivos/as) como parámetro y devuelve uno con las anualidades calculadas. Los años son los mismos. La anualidad se calcula como los 300 000 por la inflación por los pensionados de ese año por 13 (los pagos en los 12 meses más el aguinaldo).  
+
+```{r}
+anualidades <- function(df){
+  df.anualidades <- data.frame(
+    año <- df[, 1],
+    anualidades <- NA
+  )
+  vec.anualidades <- c()
+  for (i in 1:length(pensionados.vivosh[,1])){
+    anualidad <- 13*(300000*(1+0.03)^i)*(df[i, 2])
+    vec.anualidades <- c(vec.anualidades, anualidad)
+  }
+  df.anualidades$anualidades <- vec.anualidades
+  return(df.anualidades)
+}
+```
+
+Se guardan y se limpian los resultados tanto para hombres como para mujeres
+
+```{r}
+anualidades.h <- anualidades(pensionados.vivosh)
+anualidades.m <- anualidades(pensionados.vivosm)
+
+anualidades.h <- anualidades.h[, -2]
+anualidades.m <- anualidades.m[, -2]
+
+names(anualidades.h)[names(anualidades.h) == "año....df...1."] <- "año"
+names(anualidades.m)[names(anualidades.m) == "año....df...1."] <- "año"
+
+```
+
+
