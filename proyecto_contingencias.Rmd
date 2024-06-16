@@ -609,15 +609,19 @@ Se creará una función para identificar el primer *False* de cada fila de una m
 ```{r fun_false}
 fila.muerte <- function(fila){
   # Primer índice que es falso
-  fila[(which(fila == FALSE)[1] + 1):length(fila)] <- FALSE
+  fila[(which(!fila)[1] + 1):length(fila)] <- FALSE
   return(fila)
 }
 ```
 
-
 Posteriormente, se procede a realizar manualmente la primera iteración del modelo, pues la función recibirá como parámetro la primera prima calculada.
 
 ```{r primera_iteracion}
+ini <- Sys.time()
+# Lista para resultados
+lista.primash <- list()
+lista.primasm <- list()
+
 # Tasa equivalente
 j <- ((1.04) / (1.03)) - 1
 
@@ -643,10 +647,14 @@ colnames(matriz.probm) <- c(2024: (2024 + 115 - 21))
 rownames(matriz.probh) <- c(21:65)
 rownames(matriz.probm) <- c(21:65)
 
-# Creamos las matrices de números aleatorios
-matriz.rndh <- matrix(data = pnorm(rnorm(ncol(matriz.probh) * nrow(matriz.probh), mean(densidad.h), sd = sd(densidad.h)), mean = mean(densidad.h), sd = sd(densidad.h)), nrow = nrow(matriz.probh), ncol = ncol(matriz.probh))
+# El número de filas y columnas es fijo, entonces se guardará para que no se calcule en cada iteración después
+colmat <- ncol(matriz.probh)
+filmat <- nrow(matriz.probm)
 
-matriz.rndm <- matrix(data = pnorm(rnorm(ncol(matriz.probm) * nrow(matriz.probm), mean(densidad.m), sd = sd(densidad.m)), mean = mean(densidad.m), sd = sd(densidad.m)), nrow = nrow(matriz.probm), ncol = ncol(matriz.probm))
+# Creamos las matrices de números aleatorios
+matriz.rndh <- matrix(data = pnorm(rnorm(colmat * filmat, mean(densidad.h), sd = sd(densidad.h)), mean = mean(densidad.h), sd = sd(densidad.h)), nrow = filmat, ncol = colmat)
+
+matriz.rndm <- matrix(data = pnorm(rnorm(colmat * filmat, mean(densidad.m), sd = sd(densidad.m)), mean = mean(densidad.m), sd = sd(densidad.m)), nrow = filmat, colmat)
 
 # Comparación de matrices
 matriz.rndh <- matriz.rndh < matriz.probh
@@ -657,13 +665,74 @@ matriz.rndh <- t(apply(matriz.rndh, 1, fila.muerte))
 matriz.rndm <- t(apply(matriz.rndm, 1, fila.muerte))
 
 # Índice del primer falso
-idh <- sapply(1:nrow(matriz.rndh), function(m) which(matriz.rndh[m, ] == FALSE)[1]) - 1
-idm <- sapply(1:nrow(matriz.rndm), function(m) which(matriz.rndm[m, ] == FALSE)[1]) - 1
+idh <- sapply(1:filmat, function(m) which(!matriz.rndh[m, ])[1]) - 1
+idm <- sapply(1:filmat, function(m) which(!matriz.rndm[m, ])[1]) - 1
 
 # Anualidades
-anh <- sapply(1:length(idh), function(n) sum((1 + j) ^ -(0:idh[n])))
-anm <- sapply(1:length(idm), function(n) sum((1 + j) ^ -(0:idm[n])))
+anh <- sapply(1:filmat, function(n) sum((1 + j) ^ -(0:idh[n])))
+anm <- sapply(1:filmat, function(n) sum((1 + j) ^ -(0:idm[n])))
 
-# Suma asegurada
+# Rango de años de cada persona desde que llega a 65 años hasta que fallece
+annosh.65 <- sapply(21:65, function(o) c((65 - o + 1):(idh[[o - 20]] + 1)))
+annosm.65 <- sapply(21:65, function(o) c((65 - o + 1):(idm[[o - 20]] + 1)))
+
+# Beneficios para trabajadores y pensionados
+benh <- sapply(1:length(annosh.65), function(p) (ifelse(idh + c(21:65) < 65, 5000000 * ((1 + j) ^ -(idh + 1)), sum(300000 * 13 * (1 + j) ^ -annosh.65[[p]]) + 1000000 * ((1 + j) ^ -(idh + 1))))[p])
+
+benm <- sapply(1:length(annosm.65), function(p) (ifelse(idm + c(21:65) < 65, 5000000 * ((1 + j) ^ -(idm + 1)), sum(300000 * 13 * (1 + j) ^ -annosm.65[[p]]) + 1000000 * ((1 + j) ^ -(idm + 1))))[p])
+
+# Guardamos el resultado
+lista.primash[[1]] <- (benh / anh)
+lista.primasm[[1]] <- (benm / anm)
+
+fin <- Sys.time()
+print(fin - ini)
+```
+
+Posteriormente, se realiza la función que se encarga de las demás iteraciones del modelo estocástico.
+
+```{r siguientes_iteraciones}
+modelo.estocastico <- function(matriz.prob, prom.primas, densidad, lista.primas){
+  while (abs(prom.primas - mean(unlist(lista.primas))) > 0.001) {
+    # Creamos la matriz de números aleatorios
+  matriz.rnd <- matrix(data = pnorm(rnorm(colmat * filmat, mean(densidad), sd = sd(densidad)), mean = mean(densidad), sd = sd(densidad)), nrow = filmat, ncol = colmat)
+  
+  # Comparación de matrices
+  matriz.rnd <- matriz.rnd < matriz.prob
+  
+  # Se agregan los falsos después del primer falso de la matriz
+  matriz.rnd <- t(apply(matriz.rnd, 1, fila.muerte))
+  
+  # Índice del primer falso
+  id <- sapply(1:filmat, function(m) which(!matriz.rnd[m, ])[1]) - 1
+  
+  # Anualidad
+  an <- sapply(1:filmat, function(n) sum((1 + j) ^ -(0:id[n])))
+  
+  # Rango de años de cada persona desde que llega a 65 años hasta que fallece
+  annos.65 <- sapply(21:65, function(o) c((65 - o + 1):(id[[o - 20]] + 1)))
+  
+  # Beneficios para trabajadores y pensionados
+  ben <- sapply(1:length(annos.65), function(p) (ifelse(id + c(21:65) < 65, 5000000 * ((1 + j) ^ -(id + 1)), sum(300000 * 13 * (1 + j) ^ -annos.65[[p]]) + 1000000 * ((1 + j) ^ -(id + 1))))[p])
+  
+  # Actualizamos el promedio correspondiente
+  prom.primas <- mean(unlist(lista.primas))
+  
+  # Primas
+  lista.primas <- append(lista.primas, list(ben / an))
+  }
+  
+  # Se devuelven las primas de cada iteración
+  return(lista.primas)
+  }
+```
+
+Probamos el modelo para cada género.
+
+```{r modelo}
+ini <- Sys.time()
+prueba <- modelo.estocastico(matriz.probh, 0, densidad.h, lista.primash)
+fin <- Sys.time()
+print(fin - ini)
 ```
 
