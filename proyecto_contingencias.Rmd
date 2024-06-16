@@ -8,23 +8,35 @@ output: html_document
 
 # Proyecto contingencias I
 
+## Librerías necesarias
+
+```{r librerías}
+
+pacman::p_load(readxl,
+               ggplot2,
+               dplyr,
+               fitdistrplus)
+
+```
+
+
 ## Descarga de datos
 
 Se inicia con la descarga de los datos, para la base de datos de los empleados se agregaron columnas con la edad y el año de nacimiento, para los valores tqx se realizó una tabla dinámica separada por cada sexo, todos los cambios fueron hechos desde MS Excel.
 
 ```{r descarga_datos}
-library(readxl)
+
 empleados <- read_excel("datos/Base de datos.xlsx")
 qx.hombres <- read_excel("datos/tavid2000-2150.xlsx", 
     sheet = "Sexo_1_limpio")
 qx.mujeres <- read_excel("datos/tavid2000-2150.xlsx", 
     sheet = "Sexo_2_limpio")
+
 ```
 
 Se cambia el nombre y el orden las columnas de la base de empleados.
 
 ```{r corr_columnas}
-library(dplyr)
 
 # Nombre de columnas
 empleados <- empleados %>% 
@@ -37,8 +49,8 @@ empleados <- empleados %>%
   )
 
 # Se reordena el DataFrame
-empleados <- empleados %>% 
-  select(id, sexo, edad, anno_nac, fecha_nac)
+empleados <- empleados %>%
+  dplyr::select(id, sexo, edad, anno_nac, fecha_nac)
 ```
 
 La edad de las personas se calculó para 2023, se requiere la de 2024, por los que se suma una unidad a esa columna.
@@ -450,7 +462,6 @@ pensionados.fallecidosm <- def.pensionados(df.pensionadosm, qx.mujeres)
 Como primer paso, se extraen los dataframes necesarios.
 
 ```{r}
-library(dplyr)
 df.activos.fallecidosm <- as.data.frame(activos.fallecidosm[[1]])
 df.activos.fallecidosh <- as.data.frame(activos.fallecidosh[[1]])
 
@@ -567,10 +578,92 @@ def.proyeccion.finac.pen <- function(df.pensionados.fallecidos) {
 
 Se aplica la funcion para los df ya establecidos tanto de hombres como mujeres
 
-```{r}
+```{r costo_pensionados}
 # Aplicar la función a los pensionados fallecidos hombres y mujeres
-costos_pensionados_fallecidosh <- def.proyeccion.finac.pen(pensionados.fallecidosh)
-costos_pensionados_fallecidosm <- def.proyeccion.finac.pen(pensionados.fallecidosm)
+costos.pensionados.fallecidosh <- def.proyeccion.finac.pen(pensionados.fallecidosh)
+costos.pensionados.fallecidosm <- def.proyeccion.finac.pen(pensionados.fallecidosm)
 
+```
+
+## Modelo estocástico
+
+Inicialmente, para determinar la distribución a utilizar en la generación de números aleatorios, se crea un gráfico para observar la función de sobrevivencia de las probabilidades de muerte de la SUPEN.
+
+```{r grafico_distribucion}
+# Probabilidades de sobrevivencia
+densidad.h <- 1 - sapply(22:116, function(x) qx.hombres[[x, 4 + x]])
+densidad.m <- 1 - sapply(22:116, function(x) qx.mujeres[[x, 4 + x]])
+
+# Gráfico
+ggplot(data = data.frame(edad = c(21:115), datos = densidad.h)) +
+  geom_density(aes(x = datos)) +
+  theme_minimal()
+
+ggplot(data = data.frame(edad = c(21:115), datos = densidad.m)) +
+  geom_density(aes(x = datos)) +
+  theme_minimal()
+```
+
+Se creará una función para identificar el primer *False* de cada fila de una matriz.
+
+```{r fun_false}
+fila.muerte <- function(fila){
+  # Primer índice que es falso
+  fila[(which(fila == FALSE)[1] + 1):length(fila)] <- FALSE
+  return(fila)
+}
+```
+
+
+Posteriormente, se procede a realizar manualmente la primera iteración del modelo, pues la función recibirá como parámetro la primera prima calculada.
+
+```{r primera_iteracion}
+# Tasa equivalente
+j <- ((1.04) / (1.03)) - 1
+
+# Todas las probabilidades de muerte, de hombres, de 21 hasta 65
+prob.muerteh <- sapply(1:45, function(j) sapply(((21 + j)):116, function(k) qx.hombres[[k, 25 + k]]))
+
+# Matriz de probabilidades de supervivencia, de hombres, desde edad inicial 21 hasta edad inicial 65, cada fila es una persona de edad 21, 22, 23, ...
+matriz.probh <- (1 - t(as.matrix(sapply((1:length(prob.muerteh)), function(l) c(prob.muerteh[[l]], rep(1, (length(prob.muerteh[[1]]) - length(prob.muerteh[[l]]) + 1)))))))
+
+# Todas las probabilidades de muerte, de mujeres, de 21 hasta 65
+prob.muertem <- sapply(1:45, function(j) sapply(((21 + j)):116, function(k) qx.mujeres[[k, 25 + k]]))
+
+# Matriz de probabilidades de supervivencia, de mujeres, desde edad inicial 21 hasta edad inicial 65, cada fila es una persona de edad 21, 22, 23, ...
+matriz.probm <- (1 - t(as.matrix(sapply((1:length(prob.muertem)), function(l) c(prob.muertem[[l]], rep(1, (length(prob.muertem[[1]]) - length(prob.muertem[[l]]) + 1)))))))
+
+# Se eliminan las columnas innecesarias
+matriz.probh <- matriz.probh[, 1:(ncol(matriz.probh) - 1)]
+matriz.probm <- matriz.probm[, 1:(ncol(matriz.probm) - 1)]
+
+# Nombres de filas y columnas
+colnames(matriz.probh) <- c(2024: (2024 + 115 - 21))
+colnames(matriz.probm) <- c(2024: (2024 + 115 - 21))
+rownames(matriz.probh) <- c(21:65)
+rownames(matriz.probm) <- c(21:65)
+
+# Creamos las matrices de números aleatorios
+matriz.rndh <- matrix(data = pnorm(rnorm(ncol(matriz.probh) * nrow(matriz.probh), mean(densidad.h), sd = sd(densidad.h)), mean = mean(densidad.h), sd = sd(densidad.h)), nrow = nrow(matriz.probh), ncol = ncol(matriz.probh))
+
+matriz.rndm <- matrix(data = pnorm(rnorm(ncol(matriz.probm) * nrow(matriz.probm), mean(densidad.m), sd = sd(densidad.m)), mean = mean(densidad.m), sd = sd(densidad.m)), nrow = nrow(matriz.probm), ncol = ncol(matriz.probm))
+
+# Comparación de matrices
+matriz.rndh <- matriz.rndh < matriz.probh
+matriz.rndm <- matriz.rndm < matriz.probm
+
+# Se agregan los falsos después del primer falso de la matriz
+matriz.rndh <- t(apply(matriz.rndh, 1, fila.muerte))
+matriz.rndm <- t(apply(matriz.rndm, 1, fila.muerte))
+
+# Índice del primer falso
+idh <- sapply(1:nrow(matriz.rndh), function(m) which(matriz.rndh[m, ] == FALSE)[1]) - 1
+idm <- sapply(1:nrow(matriz.rndm), function(m) which(matriz.rndm[m, ] == FALSE)[1]) - 1
+
+# Anualidades
+anh <- sapply(1:length(idh), function(n) sum((1 + j) ^ -(0:idh[n])))
+anm <- sapply(1:length(idm), function(n) sum((1 + j) ^ -(0:idm[n])))
+
+# Suma asegurada
 ```
 
