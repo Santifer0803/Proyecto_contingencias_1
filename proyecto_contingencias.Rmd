@@ -602,7 +602,9 @@ calcular_kpx <- function(x,k,tabla){
   }
   return(kpx)
 }
+```
 
+```{r}
 calcular_primas <- function(edad, tabla_mort){
   tasa_j_eq <- ((1.04) / (1.03)) - 1
   v <- 1/(1+tasa_j_eq)
@@ -648,6 +650,212 @@ primas.mujeres <- sapply((1:45), function(l) calcular_primas(l, qx.mujeres))
 ```{r}
 datos.hombres[["primas"]] <- primas.hombres
 datos.mujeres[["primas"]] <- primas.mujeres
+```
+
+## Funciones de apoyo para la prima nivelada
+
+### Función de sobrevivencia
+```{r Función kpx}
+kpx <- function(x, k, y, qx, w){
+  
+  #' @param x edad cumplida
+  #' @param k años por sobrevivir
+  #' @param qx dataframe con las probabilidades de muerte
+  #' @param w edad final de la tabla
+  #' @return probabilidad de sobrevivir k años de un inidividuo de edad x
+  
+  if (x %% 1 != 0 || k %% 1 != 0 || x < 0 || k < 0) {
+    #stop("Deben de ser enteros positivos.")
+  }
+  
+  if (x > w){
+    stop("La edad en años cumplidos debe ser menor que la edad final de la tabla")
+  }
+  
+  Sx <- 1
+  anno <- which(colnames(qx) == y)
+  
+  if (k >= 1){
+    for (i in 0:(k-1)){
+      if (x + i <= w){
+        Sx <- Sx*(1 - qx[[x+i+1, anno]])
+        anno <- anno+1
+      }
+    }
+  }
+
+  return(Sx)
+}
+```
+
+### Seguro completo anual: Ax
+```{r}
+Ax <- function(x, qx, y, w, i){
+  
+  #' @param x edad cumplida
+  #' @param qx dataframe con las probabilidades de muerte
+  #' @param y año actual
+  #' @param i tasa de interes
+  #' @param w edad final de la tabla
+  #' @return valor de un seguro completo anual para una persona de edad x
+  
+  Ax <- 0
+  anno <- which(colnames(qx) == y)
+  
+  for (j in 0:(w-x-1)){
+    
+      sobrevivencia <- kpx(x, j, y, qx, w)
+      muerte <- qx[[x+1+j, anno+j]]
+      descuento <- (1+i)**(-(j+1))
+      Ax <- Ax + (sobrevivencia*muerte*descuento)
+    
+  }
+  
+  return(Ax)
+}
+```
+
+### Seguro temporal anual: Axn
+```{r}
+Axn <- function(x, n, y, qx, w, i){
+  
+  #' @param x edad cumplida
+  #' @param n años de duracion por los cuales cubre el seguro
+  #' @param y año actual
+  #' @param qx dataframe con las probabilidades de muerte
+  #' @param w edad final de la tabla
+  #' @param i tasa de interes
+  #' @return valor del seguro temporal anual para una persona de edad x, que cubre si muere antes de n años
+  
+  if ((x+n)>w){
+    stop("El individuo de edad"+ x + "no puede comprar un seguro de" + n + "annos")
+  }
+    
+  Axn <- 0
+  anno <- which(colnames(qx) == y)
+  
+  for (j in 0:(n-1)){
+    sobrevivencia <- kpx(x, j, y, qx, w)
+    muerte <- qx[[x+1+j, anno+j]]
+    descuento <- (1+i)**(-(j+1))
+    Axn <- Axn + (sobrevivencia*muerte*descuento)
+  }
+  
+  return(Axn)
+}
+```
+
+### Funcion para calcular prima nivelada
+
+```{r}
+prima.nivelada <- function(base.empleados, y) {
+    df <- data.frame(vp = numeric(0), anualidad = numeric(0))
+  
+  j <- ((1.04 / 1.03) - 1)
+  v <- 1/(1+j)
+  for (i in 1:nrow(empleados)) {
+    x <- base.empleados[["edad"]][i]
+    
+    if (base.empleados[["sexo"]][i] == "M") {
+      prob <- qx.hombres
+    } else {
+      prob <- qx.mujeres
+    }
+    suma.1 <- 5000000 * Axn(x, 65 - x, y, prob, 115, j)
+    #beneficio en caso de muerte del pensionado
+    suma.2 <- 1000000 * Ax(x, prob, y, 115, j)
+    #Beneficio de pension y aguinaldo por vejez
+    suma.3 <- 300000 * 13 * Ax(x, prob, y, 115, j)
+    
+    vp.salidas <- suma.1 + suma.2 + suma.3
+    #anualidad
+    vp.entradas <- sum(sapply(1:(65 - x), function(r) v**r * calcular_kpx(x, r, prob)))
+    
+    df <- rbind(df, data.frame(vp = vp.salidas,  anualidad = vp.entradas))
+  }
+  return(df)
+}
+```
+```{r}
+prima.nivelada.resultado <- prima.nivelada(empleados, 2024)
+```
+
+```{r}
+prima_nivelada <- sum(prima.nivelada.resultado$vp) / sum(prima.nivelada.resultado$anualidad)
+```
+
+###Metodos de reducciones de primas en un 10%
+# En el primer mteodo se va a reducir el monto de la pension por aproximacion manual
+# Al reducri los pagos mensuales los costos mensuales se disminuyen, para la empresa seria beneficioso
+# ya que necesitaria menos fondos para cubrir sus gastos, sin embargo trae efectos negativos en los empleados
+# sobretodo a futuro ya que el monto de la pension se va a reducir
+```{r}
+calcular_primas_metodo1 <- function(edad, tabla_mort){
+  tasa_j_eq <- ((1.04) / (1.03)) - 1
+  v <- 1/(1+tasa_j_eq)
+  primas <- c()
+  
+ben_muerte_act <- 5000000 * sum(sapply(0:(64 - edad), function(i) {
+  v^(i + 1) * calcular_kpx(edad, i, tabla_mort) * tabla_mort[[edad + i + 1, 26 + i]]
+}))
+  
+  ben_muerte_pens <- v^(65-edad)*calcular_kpx(edad, 65-edad, tabla_mort)*1000000*sum(sapply((0:50), function(k) v^(k+1) * calcular_kpx(edad, k, tabla_mort)*tabla_mort[[65 + k + 1, 26 + 65 + k]]))
+  
+  ben_anualidades <- v^(65-edad)*calcular_kpx(edad, 65-edad, tabla_mort)*13*267000 * sum(sapply((0:50), function(m) v^(m+1)* calcular_kpx(65, m, tabla_mort)))
+  
+  denominador <- sum(sapply((1:(66-edad)), function(r) v^(r) * calcular_kpx(edad, r, tabla_mort)))
+  
+  primas <- c((ben_muerte_act + ben_muerte_pens + ben_anualidades)/denominador, primas)
+  
+  return(primas)
+}
+```
+
+```{r}
+primas.hombres_metodo1 <- sapply((1:45), function(p) calcular_primas_metodo1(p, qx.hombres))
+primas.mujeres_metodo1 <- sapply((1:45), function(l) calcular_primas_metodo1(l, qx.mujeres))
+```
+
+```{r}
+datos.hombres[["primas_metodo1"]] <- primas.hombres_metodo1
+datos.mujeres[["primas_metodo1"]] <- primas.mujeres_metodo1
+```
+
+# Segundo metodo consiste en que ya las personas no van a poder jubilarse hasta la edad de 66
+# Esto genera que se tengan que hacer menos pagos de pensiones, y a su vez que los empleados
+# van a aportar por mas annos al fondo de pensiones, de igual forma el valor presete disminuye
+# Y para los empleados no todo es negatico en parte,los empleados podran acumular beneficios por mas tiempo.
+
+```{r}
+calcular_primas_metodo2 <- function(edad, tabla_mort){
+  tasa_j_eq <- ((1.04) / (1.03)) - 1
+  v <- 1/(1+tasa_j_eq)
+  primas <- c()
+  
+ben_muerte_act <- 5000000 * sum(sapply(0:(66 - edad), function(i) {
+  v^(i + 1) * calcular_kpx(edad, i, tabla_mort) * tabla_mort[[edad + i + 1, 26 + i]]
+}))
+  
+  ben_muerte_pens <- v^(67-edad)*calcular_kpx(edad, 67-edad, tabla_mort)*1000000*sum(sapply((0:48), function(k) v^(k+1) * calcular_kpx(edad, k, tabla_mort)*tabla_mort[[67 + k + 1, 26 + 67 + k]]))
+  
+  ben_anualidades <- v^(67-edad)*calcular_kpx(edad, 67-edad, tabla_mort)*13*300000 * sum(sapply((0:48), function(m) v^(m+1)* calcular_kpx(67, m, tabla_mort)))
+  
+  denominador <- sum(sapply((1:(68-edad)), function(r) v^(r) * calcular_kpx(edad, r, tabla_mort)))
+  
+  primas <- c((ben_muerte_act + ben_muerte_pens + ben_anualidades)/denominador, primas)
+  
+  return(primas)
+}
+```
+
+```{r}
+primas.hombres_metodo2 <- sapply((1:45), function(p) calcular_primas_metodo2(p, qx.hombres))
+primas.mujeres_metodo2 <- sapply((1:45), function(l) calcular_primas_metodo2(l, qx.mujeres))
+```
+
+```{r}
+datos.hombres[["primas_metodo2"]] <- primas.hombres_metodo2
+datos.mujeres[["primas_metodo12"]] <- primas.mujeres_metodo2
 ```
 
 
