@@ -585,6 +585,72 @@ costos.pensionados.fallecidosm <- def.proyeccion.finac.pen(pensionados.fallecido
 
 ```
 
+### Calculo de prima anual
+
+se crea la funcion que calcula primas anuales
+```{r}
+
+#funcion para calcular kpx
+calcular_kpx <- function(x,k,tabla){
+  
+  if (k > 0){
+  
+    kpx <- prod(sapply(0:(k-1), function(i) 1-tabla[[x+i+1, 26+i]]))
+  }
+  else {
+    kpx <- 1
+  }
+  return(kpx)
+}
+
+calcular_primas <- function(edad, tabla_mort){
+  tasa_j_eq <- ((1.04) / (1.03)) - 1
+  v <- 1/(1+tasa_j_eq)
+  primas <- c()
+  
+ben_muerte_act <- 5000000 * sum(sapply(0:(64 - edad), function(i) {
+  v^(i + 1) * calcular_kpx(edad, i, tabla_mort) * tabla_mort[[edad + i + 1, 26 + i]]
+}))
+  
+  ben_muerte_pens <- v^(65-edad)*calcular_kpx(edad, 65-edad, tabla_mort)*1000000*sum(sapply((0:50), function(k) v^(k+1) * calcular_kpx(edad, k, tabla_mort)*tabla_mort[[65 + k + 1, 26 + 65 + k]]))
+  
+  ben_anualidades <- v^(65-edad)*calcular_kpx(edad, 65-edad, tabla_mort)*13*300000 * sum(sapply((0:50), function(m) v^(m+1)* calcular_kpx(65, m, tabla_mort)))
+  
+  denominador <- sum(sapply((1:(66-edad)), function(r) v^(r) * calcular_kpx(edad, r, tabla_mort)))
+  
+  primas <- c((ben_muerte_act + ben_muerte_pens + ben_anualidades)/denominador, primas)
+  
+  return(primas)
+}
+
+
+```
+
+para almacenar los datos de las primas, se usa como base el dataframe empleados. 
+```{r}
+datos.hombres <- empleados[empleados$sexo == "M", ]
+
+datos.hombres <- datos.hombres[, -c(1, 2, 4, 5)] 
+datos.hombres <- datos.hombres[!duplicated(datos.hombres$edad), ]
+
+datos.mujeres <- empleados[empleados$sexo == "F", ]
+
+datos.mujeres <- datos.mujeres[, -c(1, 2, 4, 5)] 
+datos.mujeres <- datos.mujeres[!duplicated(datos.mujeres$edad), ]
+```
+
+se calculan las primas para hombres y mujeres, y se guardan en el dataframe de datos de cada uno
+```{r}
+primas.hombres <- sapply((1:45), function(p) calcular_primas(p, qx.hombres))
+primas.mujeres <- sapply((1:45), function(l) calcular_primas(l, qx.mujeres))
+```
+
+```{r}
+datos.hombres[["primas"]] <- primas.hombres
+datos.mujeres[["primas"]] <- primas.mujeres
+```
+
+
 ## Modelo estocástico
 
 Inicialmente, para determinar la distribución a utilizar en la generación de números aleatorios, se crea un gráfico para observar la función de sobrevivencia de las probabilidades de muerte de la SUPEN.
