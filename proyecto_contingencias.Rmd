@@ -15,7 +15,7 @@ output: html_document
 pacman::p_load(readxl,
                ggplot2,
                dplyr,
-               fitdistrplus)
+               data.table)
 
 ```
 
@@ -236,7 +236,6 @@ activos.fallecidosm <- def.activos(empleados, qx.mujeres, "F")
 Primeramente se determinarán los pensionados que entran cada año para cada sexo, usando lo hecho en el punto a).
 
 ```{r pensionados_por_anno}
-library(data.table)
 
 # Se extraen las matrices de sobrevivientes por edad para cada sexo
 matriz.hombres <- activos.vivosh[[2]]
@@ -605,26 +604,37 @@ calcular_kpx <- function(x,k,tabla){
 ```
 
 ```{r}
-calcular_primas <- function(edad, tabla_mort){
-  tasa_j_eq <- ((1.03)*(1.04)) -1
-  v <- (1+0.03)/(1+tasa_j_eq)
-  primas <- c()
+calcular_primas <- function(edad, tabla_mort) {
+  tasa_j_eq <- ((1.03) * (1.04)) - 1
+  v <- (1 + 0.03) / (1 + tasa_j_eq)
   
-ben_muerte_act <- 5000000 * sum(sapply(0:(64 - edad), function(i) {
-  v^(i + 1) * calcular_kpx(edad, i, tabla_mort) * tabla_mort[[edad + i + 1, 26 + i]]
-}))
+  ben_muerte_act <- 5000000 * sum(sapply(0:(64 - edad), function(i) {
+    v ^ (i + 1) * calcular_kpx(edad, i, tabla_mort) * tabla_mort[[edad + i + 1, 26 + i]]
+  }))
   
-  ben_muerte_pens <- v^(65-edad)*calcular_kpx(edad, 65-edad, tabla_mort)*1000000*sum(sapply((0:50), function(k) v^(k+1) * calcular_kpx(edad, k, tabla_mort)*tabla_mort[[65 + k + 1, 26 + 65 + k]]))
+  ben_muerte_pens <-
+    v ^ (65 - edad) * calcular_kpx(edad, (65 - edad), tabla_mort) * 1000000 * sum(sapply((0:50), function(k)
+      v ^ (k + 1) * calcular_kpx(edad, k, tabla_mort) * tabla_mort[[65 + k + 1, 26 + 65 + k]]))
   
-  ben_anualidades <- v^(65-edad)*calcular_kpx(edad, 65-edad, tabla_mort)*13*300000 * sum(sapply((0:50), function(m) v^(m+1)* calcular_kpx(65, m, tabla_mort)))
+  ben_anualidades <-
+    v ^ (65 - edad) * calcular_kpx(edad, 65 - edad, tabla_mort) * 13 * 300000 * sum(sapply((0:50), function(m)
+      v ^ (m + 1) * calcular_kpx(65, m, tabla_mort)))
   
-  denominador <- sum(sapply((1:(66-edad)), function(r) v^(r) * calcular_kpx(edad, r, tabla_mort)))
+  denominador <-
+    sum(sapply((1:(66 - edad)), function(r)
+      v ^ (r) * calcular_kpx(edad, r, tabla_mort)))
   
-  primas <- c((ben_muerte_act + ben_muerte_pens + ben_anualidades)/denominador, primas)
+  primas <-
+    c((ben_muerte_act + ben_muerte_pens + ben_anualidades) / denominador,
+      primas)
   vp <- (ben_muerte_act + ben_muerte_pens + ben_anualidades)
   anualidad <- denominador
   
-  return(list(primas = primas, vp = vp, anualidad = anualidad))
+  return(list(
+    primas = primas,
+    vp = vp,
+    anualidad = anualidad
+  ))
 }
 
 ```
@@ -642,7 +652,8 @@ datos.mujeres <- datos.mujeres[, -c(1, 2, 4, 5)]
 datos.mujeres <- datos.mujeres[!duplicated(datos.mujeres$edad), ]
 ```
 
-se calculan las primas para hombres y mujeres, y se guardan en el dataframe de datos de cada uno
+Se calculan las primas para hombres y mujeres, y se guardan en el dataframe de datos de cada uno.
+
 ```{r}
 resultados.hombres <- lapply(1:45, function(p) calcular_primas(p, qx.hombres))
 primas.hombres <- sapply(resultados.hombres, function(res) res$prima)
@@ -654,6 +665,8 @@ primas.mujeres <- sapply(resultados.mujeres, function(res) res$prima)
 vp.mujeres <- sapply(resultados.mujeres, function(res) res$vp)
 anualidad.mujeres <- sapply(resultados.mujeres, function(res) res$anualidad)
 ```
+
+
 
 ```{r}
 datos.hombres[["primas"]] <- primas.hombres
@@ -669,11 +682,11 @@ datos.mujeres[["anualidad"]] <- anualidad.mujeres
 prima_nivelada <- (sum(datos.hombres$vp) + sum(datos.mujeres$vp)) / (sum(datos.hombres$anualidad) + sum(datos.hombres$anualidad))
 print(paste("La prima media nivelada es:", round(prima_nivelada, 2)))
 ```
-###Metodos de reducciones de primas en un 10%
-# En el primer mteodo se va a reducir el monto de la pension por aproximacion manual
-# Al reducri los pagos mensuales los costos mensuales se disminuyen, para la empresa seria beneficioso
-# ya que necesitaria menos fondos para cubrir sus gastos, sin embargo trae efectos negativos en los empleados
-# sobretodo a futuro ya que el monto de la pension se va a reducir
+
+### Metodos de reducciones de primas en un 10%
+
+En el primer método se va a reducir el monto de la pension por aproximación manual, al reducir los pagos mensuales, los costos mensuales se disminuyen, lo cual resulta beneficioso para la empresa, ya que necesitaria menos fondos para cubrir sus gastos, sin embargo, trae efectos negativos en los empleados, principalmente debido a que el monto de la pension se va a reducir.
+
 ```{r}
 calcular_primas_metodo1 <- function(edad, tabla_mort){
   tasa_j_eq <- ((1.03)*(1.04)) -1
@@ -706,10 +719,7 @@ datos.hombres[["primas_metodo1"]] <- primas.hombres_metodo1
 datos.mujeres[["primas_metodo1"]] <- primas.mujeres_metodo1
 ```
 
-# Segundo metodo consiste en que ya las personas no van a poder jubilarse hasta la edad de 66
-# Esto genera que se tengan que hacer menos pagos de pensiones, y a su vez que los empleados
-# van a aportar por mas annos al fondo de pensiones, de igual forma el valor presete disminuye
-# Y para los empleados no todo es negatico en parte,los empleados podran acumular beneficios por mas tiempo.
+El segundo metodo consiste en que ya las personas no van a poder jubilarse hasta la edad de 66, esto resulta en menos pagos de pensiones, y a su vez que los empleados van a aportar por mas años al fondo de pensiones; de igual forma el valor presente disminuye, por otro lado, los empleados podran acumular beneficios por mas tiempo.
 
 ```{r}
 calcular_primas_metodo2 <- function(edad, tabla_mort){
@@ -746,21 +756,12 @@ datos.mujeres[["primas_metodo12"]] <- primas.mujeres_metodo2
 
 ## Modelo estocástico
 
-Inicialmente, para determinar la distribución a utilizar en la generación de números aleatorios, se crea un gráfico para observar la función de sobrevivencia de las probabilidades de muerte de la SUPEN.
+Inicialmente, se extraen las probabilidades de supervivencia que se usarán para el modelo.
 
-```{r grafico_distribucion}
+```{r prob_sobrevivencia}
 # Probabilidades de sobrevivencia
 densidad.h <- 1 - sapply(22:116, function(x) qx.hombres[[x, 4 + x]])
 densidad.m <- 1 - sapply(22:116, function(x) qx.mujeres[[x, 4 + x]])
-
-# Gráfico
-ggplot(data = data.frame(edad = c(21:115), datos = densidad.h)) +
-  geom_density(aes(x = datos)) +
-  theme_minimal()
-
-ggplot(data = data.frame(edad = c(21:115), datos = densidad.m)) +
-  geom_density(aes(x = datos)) +
-  theme_minimal()
 ```
 
 Se creará una función para identificar el primer *False* de cada fila de una matriz.
@@ -782,16 +783,16 @@ lista.primash <- list()
 lista.primasm <- list()
 
 # Tasa equivalente
-j <- ((1.04) / (1.03)) - 1
+j <- ((1.04) * (1.03)) - 1
 
 # Todas las probabilidades de muerte, de hombres, de 21 hasta 65
-prob.muerteh <- sapply(1:45, function(j) sapply(((21 + j)):116, function(k) qx.hombres[[k, 25 + k]]))
+prob.muerteh <- sapply(1:45, function(i) sapply(((21 + i)):116, function(k) qx.hombres[[k, 25 + k]]))
 
 # Matriz de probabilidades de supervivencia, de hombres, desde edad inicial 21 hasta edad inicial 65, cada fila es una persona de edad 21, 22, 23, ...
 matriz.probh <- (1 - t(as.matrix(sapply((1:length(prob.muerteh)), function(l) c(prob.muerteh[[l]], rep(1, (length(prob.muerteh[[1]]) - length(prob.muerteh[[l]]) + 1)))))))
 
 # Todas las probabilidades de muerte, de mujeres, de 21 hasta 65
-prob.muertem <- sapply(1:45, function(j) sapply(((21 + j)):116, function(k) qx.mujeres[[k, 25 + k]]))
+prob.muertem <- sapply(1:45, function(i) sapply(((21 + i)):116, function(k) qx.mujeres[[k, 25 + k]]))
 
 # Matriz de probabilidades de supervivencia, de mujeres, desde edad inicial 21 hasta edad inicial 65, cada fila es una persona de edad 21, 22, 23, ...
 matriz.probm <- (1 - t(as.matrix(sapply((1:length(prob.muertem)), function(l) c(prob.muertem[[l]], rep(1, (length(prob.muertem[[1]]) - length(prob.muertem[[l]]) + 1)))))))
@@ -828,8 +829,8 @@ idh <- sapply(1:filmat, function(m) which(!matriz.rndh[m, ])[1]) - 1
 idm <- sapply(1:filmat, function(m) which(!matriz.rndm[m, ])[1]) - 1
 
 # Anualidades
-anh <- sapply(1:filmat, function(n) sum((1 + j) ^ -(0:idh[n])))
-anm <- sapply(1:filmat, function(n) sum((1 + j) ^ -(0:idm[n])))
+anh <- sapply(1:filmat, function(n) sum((1 + j) ^ -(0:(min(idh[n], (65 - 20 - n))))))
+anm <- sapply(1:filmat, function(n) sum((1 + j) ^ -(0:(min(idh[n], (65 - 20 - n))))))
 
 # Rango de años de cada persona desde que llega a 65 años hasta que fallece
 annosh.65 <- sapply(21:65, function(o) c((65 - o + 1):(idh[[o - 20]] + 1)))
