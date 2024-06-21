@@ -21,10 +21,37 @@ pacman::p_load(readxl,
 
 ## Funciones necesarias
 
+Se crea una función que extrae las probabilidades de muerte de más de un año, para un individuo.
+
+```{r fun_kpx}
+#' Calcula las probabilidades de sobrevivencia de un individuo.
+#'
+#' Esta función calcula las probabilidades de sobrevivencia de un individuo de 
+#' de edad \code{x}, con base a la cantidad de años \code{k}, iniciando en el
+#' año 2024, con una \code{tabla} de mortalidad.
+#'
+#' @param x (Integer) Edad en años cumplidos del individuo.
+#' @param k (Integer) Cantidad de años de sobrevivencia.
+#' @param tabla (DataFrame) Tabla de mortalidad con las probabilidades de muerte.
+#'
+#' @return (Numeric) Vector de probabilidades de sobrevivencia.
+#'
+calcular.kpx <- function(x, k, tabla){
+  
+  if (k > 0){
+    kpx <- prod(sapply(0:(k-1), function(i) 1-tabla[[x + i + 1, 26 + i]]))
+  }
+  else {
+    kpx <- 1
+  }
+  return(kpx)
+}
+```
+
 Se pone el seguro temporal.
 
 ```{r seguro_temporal}
-#' Calcula la esperanza del valor presente de un seguro temporal
+#' Calcula la esperanza del valor presente de un seguro temporal.
 #'
 #' Esta función calcula la esperanza del valor presente de un seguro temporal 
 #' para un asegurado de edad \code{x}, con base al año actual \code{y} y con una 
@@ -33,7 +60,7 @@ Se pone el seguro temporal.
 #'
 #' @param x (Integer) Edad en años cumplidos del asegurado.
 #' @param y (Integer) Año actual.
-#' @param n (Integert) Duración del seguro en años.
+#' @param n (Integer) Duración del seguro en años.
 #' @param qx (DataFrame) Tabla de mortalidad con las probabilidades de muerte.
 #' @param w (Integer) Edad final para el cálculo.
 #' @param i (Numeric) Tasa de interés anual.
@@ -59,7 +86,7 @@ Axn <- function(x, y, n, qx, w, i){
 Seguro completo
 
 ```{r seguro_completo}
-#' Calcula la esperanza del valor presente de un seguro completo
+#' Calcula la esperanza del valor presente de un seguro completo.
 #'
 #' Esta función calcula la esperanza del valor presente de un seguro completo 
 #' para un asegurado de edad \code{x}, con base al año actual \code{y} y con una 
@@ -68,12 +95,12 @@ Seguro completo
 #'
 #' @param x (Integer) Edad en años cumplidos del asegurado.
 #' @param y (Integer) Año actual.
-#' @param n (Integert) Duración del seguro en años.
+#' @param n (Integer) Duración del seguro en años.
 #' @param qx (DataFrame) Tabla de mortalidad con las probabilidades de muerte.
 #' @param w (Integer) Edad final para el cálculo.
 #' @param i (Numeric) Tasa de interés anual.
 #'
-#' @return (Numeric) La esperanza del valor presente del seguro completo
+#' @return (Numeric) La esperanza del valor presente del seguro completo.
 #'
 Ax <- function(x, y, qx, w, i){
   
@@ -94,7 +121,7 @@ Ax <- function(x, y, qx, w, i){
 Seguro dotal.
 
 ```{r seguro_dotal}
-#' Calcula la esperanza del valor presente de un seguro dotal
+#' Calcula la esperanza del valor presente de un seguro dotal.
 #'
 #' Esta función calcula la esperanza del valor presente de un seguro dotal 
 #' para un asegurado de edad \code{x}, con base al año actual \code{y} y con una 
@@ -126,6 +153,24 @@ dotal <- function(x, y, n, qx, w, i){
 }
 ```
 
+Se creará una función para identificar el primer *False* de cada fila de una matriz.
+
+```{r fun_false}
+fila.muerte <- function(fila){
+  #' Toma el índice de un vector, una posición antes de un falso.
+  #'
+  #' Calcula el índice de la \code{fila} de una matriz una posición antes de que
+  #' el individuo fallezca.
+  #'
+  #' @param fila (Numeric) Vector o fila de una matriz de booleanos o de 1 y 0.
+  #'
+  #' @return (Numeric) Índice, una posición antes, de donde se encuentre un
+  #' falso.
+  #'
+  fila[(which(!fila)[1] + 1):length(fila)] <- FALSE
+  return(fila)
+}
+```
 
 ## Descarga de datos
 
@@ -695,24 +740,6 @@ costos.pensionados.fallecidosm <- def.proyeccion.finac.pen(pensionados.fallecido
 
 Se crea la funcion que calcula primas anuales.
 
-```{r}
-
-#funcion para calcular kpx
-calcular_kpx <- function(x,k,tabla){
-  
-  if (k > 0){
-  
-    kpx <- prod(sapply(0:(k-1), function(i) 1-tabla[[x+i+1, 26+i]]))
-  }
-  else {
-    kpx <- 1
-  }
-  return(kpx)
-}
-```
-
-Se crea la función de primas.
-
 ```{r fun_primas}
 calcular_primas <- function(edad, tabla_mort) {
   tasa_j_eq <- (((1.03) * (1.04)) - 1)
@@ -726,13 +753,13 @@ calcular_primas <- function(edad, tabla_mort) {
   
   # Caso de muerte después de 65
   ben_muerte_pens <-
-    1000000 * Ax(65, (2024 + 65 - edad), tabla_mort, 115, tasa_j_eq) * ((1 / (1 + tasa_j_eq)) ^ (65 - edad)) * calcular_kpx(edad, (65 - edad), tabla_mort)
+    1000000 * Ax(65, (2024 + 65 - edad), tabla_mort, 115, tasa_j_eq) * ((1 / (1 + tasa_j_eq)) ^ (65 - edad)) * calcular.kpx(edad, (65 - edad), tabla_mort)
   
   # Pensión
   ben_anualidades <-
     13 * 300000 * (((1 - Ax(
       65, (2024 + 65 - edad), tabla_mort, 115, tasa_j_eq
-    )) / (1 - (1 / (1 + tasa_j_eq)))) - 1) * ((1 / (1 + tasa_j_eq)) ^ (65 - edad)) * calcular_kpx(edad, (65 - edad), tabla_mort)
+    )) / (1 - (1 / (1 + tasa_j_eq)))) - 1) * ((1 / (1 + tasa_j_eq)) ^ (65 - edad)) * calcular.kpx(edad, (65 - edad), tabla_mort)
   
   # Anualidad de las primas
   denominador <- ((1 - dotal(
@@ -809,14 +836,14 @@ calcular_primas_metodo1 <- function(edad, tabla_mort){
   primas <- c()
   
 ben_muerte_act <- 5000000 * sum(sapply(0:(64 - edad), function(i) {
-  v^(i + 1) * calcular_kpx(edad, i, tabla_mort) * tabla_mort[[edad + i + 1, 26 + i]]
+  v^(i + 1) * calcular.kpx(edad, i, tabla_mort) * tabla_mort[[edad + i + 1, 26 + i]]
 }))
   
-  ben_muerte_pens <- v^(65-edad)*calcular_kpx(edad, 65-edad, tabla_mort)*1000000*sum(sapply((0:50), function(k) v^(k+1) * calcular_kpx(edad, k, tabla_mort)*tabla_mort[[65 + k + 1, 26 + 65 + k]]))
+  ben_muerte_pens <- v^(65-edad)*calcular.kpx(edad, 65-edad, tabla_mort)*1000000*sum(sapply((0:50), function(k) v^(k+1) * calcular.kpx(edad, k, tabla_mort)*tabla_mort[[65 + k + 1, 26 + 65 + k]]))
   
-  ben_anualidades <- v^(65-edad)*calcular_kpx(edad, 65-edad, tabla_mort)*13*267000 * sum(sapply((0:50), function(m) v^(m+1)* calcular_kpx(65, m, tabla_mort)))
+  ben_anualidades <- v^(65-edad)*calcular.kpx(edad, 65-edad, tabla_mort)*13*267000 * sum(sapply((0:50), function(m) v^(m+1)* calcular.kpx(65, m, tabla_mort)))
   
-  denominador <- sum(sapply((1:(66-edad)), function(r) v^(r) * calcular_kpx(edad, r, tabla_mort)))
+  denominador <- sum(sapply((1:(66-edad)), function(r) v^(r) * calcular.kpx(edad, r, tabla_mort)))
   
   primas <- c((ben_muerte_act + ben_muerte_pens + ben_anualidades)/denominador, primas)
   
@@ -843,14 +870,14 @@ calcular_primas_metodo2 <- function(edad, tabla_mort){
   primas <- c()
   
 ben_muerte_act <- 5000000 * sum(sapply(0:(66 - edad), function(i) {
-  v^(i + 1) * calcular_kpx(edad, i, tabla_mort) * tabla_mort[[edad + i + 1, 26 + i]]
+  v^(i + 1) * calcular.kpx(edad, i, tabla_mort) * tabla_mort[[edad + i + 1, 26 + i]]
 }))
   
-  ben_muerte_pens <- v^(67-edad)*calcular_kpx(edad, 67-edad, tabla_mort)*1000000*sum(sapply((0:48), function(k) v^(k+1) * calcular_kpx(edad, k, tabla_mort)*tabla_mort[[67 + k + 1, 26 + 67 + k]]))
+  ben_muerte_pens <- v^(67-edad)*calcular.kpx(edad, 67-edad, tabla_mort)*1000000*sum(sapply((0:48), function(k) v^(k+1) * calcular.kpx(edad, k, tabla_mort)*tabla_mort[[67 + k + 1, 26 + 67 + k]]))
   
-  ben_anualidades <- v^(67-edad)*calcular_kpx(edad, 67-edad, tabla_mort)*13*300000 * sum(sapply((0:48), function(m) v^(m+1)* calcular_kpx(67, m, tabla_mort)))
+  ben_anualidades <- v^(67-edad)*calcular.kpx(edad, 67-edad, tabla_mort)*13*300000 * sum(sapply((0:48), function(m) v^(m+1)* calcular.kpx(67, m, tabla_mort)))
   
-  denominador <- sum(sapply((1:(68-edad)), function(r) v^(r) * calcular_kpx(edad, r, tabla_mort)))
+  denominador <- sum(sapply((1:(68-edad)), function(r) v^(r) * calcular.kpx(edad, r, tabla_mort)))
   
   primas <- c((ben_muerte_act + ben_muerte_pens + ben_anualidades)/denominador, primas)
   
@@ -879,15 +906,7 @@ densidad.h <- 1 - sapply(22:116, function(x) qx.hombres[[x, 4 + x]])
 densidad.m <- 1 - sapply(22:116, function(x) qx.mujeres[[x, 4 + x]])
 ```
 
-Se creará una función para identificar el primer *False* de cada fila de una matriz.
 
-```{r fun_false}
-fila.muerte <- function(fila){
-  # Primer índice que es falso
-  fila[(which(!fila)[1] + 1):length(fila)] <- FALSE
-  return(fila)
-}
-```
 
 Posteriormente, se procede a realizar manualmente la primera iteración del modelo, pues la función recibirá como parámetro la primera prima calculada.
 
@@ -1004,10 +1023,71 @@ modelo.estocastico <- function(matriz.prob, prom.primas, densidad, lista.primas)
 
 Probamos el modelo para cada género.
 
-```{r modelo}
+```{r modelo_estocastico}
 ini <- Sys.time()
 prueba <- modelo.estocastico(matriz.probh, 0, densidad.h, lista.primash)
 fin <- Sys.time()
 print(fin - ini)
+```
+
+## Gráficos
+
+En esta sección se pondrán todos los gráficos que se presenten para el proyecto.
+
+```{r comparacion_empleados activos}
+# Se inicia juntando los datos necesarios en un DataFrame
+df.grafico <- data.frame(
+  años = activos.fallecidosh[[1]]$anno,
+  vivosh = activos.vivosh[[1]]$trabajadores,
+  vivosm = activos.vivosm[[1]]$trabajadores,
+  defunch = cumsum(activos.fallecidosh[[1]]$trabajadores),
+  defuncm = cumsum(activos.fallecidosm[[1]]$trabajadores)
+)
+
+df.grafico$sumah <- df.grafico$vivosh + df.grafico$defunch
+df.grafico$sumam <- df.grafico$vivosm + df.grafico$defuncm
+
+# Gráfico para hombres
+ggplot(df.grafico, aes(x = años)) +
+  geom_line(aes(y = vivosh, color = "Vivos por año")) +
+  geom_line(aes(y = defunch, color = "Fallecidos acumulados")) +
+  geom_line(aes(y = sumah, color = "Totales por año")) +
+  labs(
+    x = "Años",
+    y = "Cantidad de personas",
+    caption = "Fuente: elaboración propia"
+  ) +
+  scale_colour_manual(
+    name = "Empleados",
+    values = c(
+      "Vivos por año" = "darkorchid",
+      "Fallecidos acumulados" = "deeppink3",
+      "Totales por año" = "indianred2"
+    )
+  ) +
+  theme_minimal()
+
+# Gráfico para mujeres
+ggplot(df.grafico, aes(x = años)) +
+  geom_line(aes(y = vivosm, color = "Vivas por año")) +
+  geom_line(aes(y = defuncm, color = "Fallecidas acumuladas")) +
+  geom_line(aes(y = sumam, color = "Totales por año")) +
+  labs(
+    x = "Años",
+    y = "Cantidad de personas",
+    caption = "Fuente: elaboración propia"
+  ) +
+  scale_colour_manual(
+    name = "Empleados",
+    values = c(
+      "Vivas por año" = "cyan3",
+      "Fallecidas acumuladas" = "deepskyblue2",
+      "Totales por año" = "lightblue3"
+    )
+  ) +
+  theme_minimal()
+
+# La variable no re ocupará más adelante, por lo que se elimina
+rm(df.grafico)
 ```
 
