@@ -19,6 +19,113 @@ pacman::p_load(readxl,
 
 ```
 
+## Funciones necesarias
+
+Se pone el seguro temporal.
+
+```{r seguro_temporal}
+#' Calcula la esperanza del valor presente de un seguro temporal
+#'
+#' Esta función calcula la esperanza del valor presente de un seguro temporal 
+#' para un asegurado de edad \code{x}, con base al año actual \code{y} y con una 
+#' duración del seguro de \code{n} años. Utiliza una tabla de mortalidad 
+#' específica y una tasa de interés dada.
+#'
+#' @param x (Integer) Edad en años cumplidos del asegurado.
+#' @param y (Integer) Año actual.
+#' @param n (Integert) Duración del seguro en años.
+#' @param qx (DataFrame) Tabla de mortalidad con las probabilidades de muerte.
+#' @param w (Integer) Edad final para el cálculo.
+#' @param i (Numeric) Tasa de interés anual.
+#'
+#' @return (Numeric) La esperanza del valor presente del seguro temporal.
+#'
+Axn <- function(x, y, n, qx, w, i){
+    
+  # Calcula cada factor de descuento en forma de vector
+  v <- ((1.03) / (1 + i)) ^ c(1:(min((w - x), n))) 
+  
+  # Obtiene los tqx (t=1) de forma diagonal
+  tqx <- sapply(0:min((n - 1), (w - x)), function(j) as.numeric(qx[x + 1 + j,  y - 1998 + j]))
+
+  # Calcula los tpx a partir de los tqx de forma acumulativa
+  tpx <- c(1, cumprod(1 - tqx))[-length(c(1, cumprod(1 - tqx)))]
+
+  # Calcula la esperanza de manera vectorizada
+  return(sum(v * tqx * tpx))
+}
+```
+
+Seguro completo
+
+```{r seguro_completo}
+#' Calcula la esperanza del valor presente de un seguro completo
+#'
+#' Esta función calcula la esperanza del valor presente de un seguro completo 
+#' para un asegurado de edad \code{x}, con base al año actual \code{y} y con una 
+#' duración del seguro de \code{n} años. Utiliza una tabla de mortalidad 
+#' específica y una tasa de interés dada.
+#'
+#' @param x (Integer) Edad en años cumplidos del asegurado.
+#' @param y (Integer) Año actual.
+#' @param n (Integert) Duración del seguro en años.
+#' @param qx (DataFrame) Tabla de mortalidad con las probabilidades de muerte.
+#' @param w (Integer) Edad final para el cálculo.
+#' @param i (Numeric) Tasa de interés anual.
+#'
+#' @return (Numeric) La esperanza del valor presente del seguro completo
+#'
+Ax <- function(x, y, qx, w, i){
+  
+  # Guardamos el valor presente como vector
+  v <- ((1.03) / (1 + i)) ^ c(1:(min((w - x), (ncol(qx) - y + 1999))))
+  
+  # Guardamos la diagonal que se requiere de los tqx, estos son: qx, qx+1, ...
+  qx <- sapply(1:min((ncol(qx) - y + 1999), (w - x)), function(j) as.numeric(qx[x + j,  y - 1999 + j]))
+  
+  # Obtenemos los tpx necesarios, estos son: 0px, 1px, ...
+  tpx <- c(1, cumprod(1 - qx))
+  
+  # Realizamos la operación necesaria
+  return(sum(v * qx * tpx[-length(tpx)]))
+}
+```
+
+Seguro dotal.
+
+```{r seguro_dotal}
+#' Calcula la esperanza del valor presente de un seguro dotal
+#'
+#' Esta función calcula la esperanza del valor presente de un seguro dotal 
+#' para un asegurado de edad \code{x}, con base al año actual \code{y} y con una 
+#' duración del seguro de \code{n} años. Utiliza una tabla de mortalidad 
+#' específica y una tasa de interés dada.
+#'
+#' @param x (Integer) Edad en años cumplidos del asegurado.
+#' @param y (Integer) Año actual.
+#' @param n (Integer) Duración del seguro en años.
+#' @param qx (DataFrame) Tabla de mortalidad con las probabilidades de muerte.
+#' @param w (Integer) Edad final para el cálculo.
+#' @param i (Numeric) Tasa de interés anual.
+#'
+#' @return (Numeric) La esperanza del valor presente del seguro dotal.
+#'
+dotal <- function(x, y, n, qx, w, i){
+  
+  # Seguro temporal
+  temporal <- Axn(x, y, n, qx, w, i)
+  
+  # Probabilidades de muerte y de sobrevivencia
+  tqx <- sapply(0:min((n - 1), (w - x)), function(j) as.numeric(qx[x + 1 + j,  y - 1998 + j]))
+  tpx <- c(1, cumprod(1 - tqx))
+  
+  # Seguro dotal puro, se usa la última probabilidad de tpx
+  dotal_puro <- (((1.03) / (1 + i)) ^ n) * tpx[length(tpx)]
+  
+  return((temporal + dotal_puro))
+}
+```
+
 
 ## Descarga de datos
 
@@ -472,7 +579,7 @@ df.activos.fallecidosm <- df.activos.fallecidosm[-1, ]
 
 Luego, se crea la funcion necesaria, recibe un dataframe para el calculo y devuelve otro con los resutados. Los años son los mismos, y para el cálculo se extrae la cantidad de muertes por año de empleados activos.
 
-```{r}
+```{r beneficio_activos}
 
 ben.muerte.activos <- function(df){
   df.ben.muerte.activos = data.frame(
@@ -541,13 +648,13 @@ names(anualidades.m)[names(anualidades.m) == "año....df...1."] <- "año"
 
 ### Proyección financiera de los pagos de beneficios de muerte de pensionados
 
-Se procede a realizar la funcion que calcula la proyeccion de los beneficios de los pesionados que mueren
+Se procede a realizar la funcion que calcula la proyección de los beneficios de los pesionados que mueren.
 
 ```{r benef.pensionados.muertos}
 
-#Funcion que recibe un df con los pensionados que mueren por ano
+# Funcion que recibe un df con los pensionados que mueren por ano
 
-#devuelve un df con el monto que se debe tener para poder cubrir esta cantidad de muertes cada anno
+# Devuelve un df con el monto que se debe tener para poder cubrir esta cantidad de muertes cada anno
 def.proyeccion.finac.pen <- function(df.pensionados.fallecidos) {
   
   M <- 1e6
@@ -556,11 +663,11 @@ def.proyeccion.finac.pen <- function(df.pensionados.fallecidos) {
   #Se inicializa una lista del tamano de numero de filas del df para asi ir guardando los montos de todos los annos
   costos <- numeric(nrow(df.pensionados.fallecidos))
   
-  #el for recorre cada ano y cada cantidad de muertos por anno, considera la inflacion
+  # El for recorre cada año y cada cantidad de muertos por anno, considera la inflacion
   for (i in 1:nrow(df.pensionados.fallecidos)) {
     inflacion <- (1 + j)^(i - 1)
     
-    #Clacula el monto ajustao por inflacion
+    # Calcula el monto ajustado por inflación
     costos[i] <- df.pensionados.fallecidos$pensionados[i] * M * inflacion
   }
   
@@ -584,9 +691,10 @@ costos.pensionados.fallecidosm <- def.proyeccion.finac.pen(pensionados.fallecido
 
 ```
 
-### Calculo de prima anual
+### Cálculo de prima anual
 
-se crea la funcion que calcula primas anuales
+Se crea la funcion que calcula primas anuales.
+
 ```{r}
 
 #funcion para calcular kpx
@@ -603,43 +711,47 @@ calcular_kpx <- function(x,k,tabla){
 }
 ```
 
-```{r}
+Se crea la función de primas.
+
+```{r fun_primas}
 calcular_primas <- function(edad, tabla_mort) {
-  tasa_j_eq <- ((1.03) * (1.04)) - 1
+  tasa_j_eq <- (((1.03) * (1.04)) - 1)
   v <- (1 + 0.03) / (1 + tasa_j_eq)
   
-  ben_muerte_act <- 5000000 * sum(sapply(0:(64 - edad), function(i) {
-    v ^ (i + 1) * calcular_kpx(edad, i, tabla_mort) * tabla_mort[[edad + i + 1, 26 + i]]
-  }))
+  # Caso si muere antes de 65
+  ben_muerte_act <-
+    ifelse(edad >= 65,
+           0,
+           5000000 * Axn(edad, 2024, (64 - edad), tabla_mort, 115, tasa_j_eq))
   
+  # Caso de muerte después de 65
   ben_muerte_pens <-
-    v ^ (65 - edad) * calcular_kpx(edad, (65 - edad), tabla_mort) * 1000000 * sum(sapply((0:50), function(k)
-      v ^ (k + 1) * calcular_kpx(edad, k, tabla_mort) * tabla_mort[[65 + k + 1, 26 + 65 + k]]))
+    1000000 * Ax(65, (2024 + 65 - edad), tabla_mort, 115, tasa_j_eq) * ((1 / (1 + tasa_j_eq)) ^ (65 - edad)) * calcular_kpx(edad, (65 - edad), tabla_mort)
   
+  # Pensión
   ben_anualidades <-
-    v ^ (65 - edad) * calcular_kpx(edad, 65 - edad, tabla_mort) * 13 * 300000 * sum(sapply((0:50), function(m)
-      v ^ (m + 1) * calcular_kpx(65, m, tabla_mort)))
+    13 * 300000 * (((1 - Ax(
+      65, (2024 + 65 - edad), tabla_mort, 115, tasa_j_eq
+    )) / (1 - (1 / (1 + tasa_j_eq)))) - 1) * ((1 / (1 + tasa_j_eq)) ^ (65 - edad)) * calcular_kpx(edad, (65 - edad), tabla_mort)
   
-  denominador <-
-    sum(sapply((1:(66 - edad)), function(r)
-      v ^ (r) * calcular_kpx(edad, r, tabla_mort)))
+  # Anualidad de las primas
+  denominador <- ((1 - dotal(
+      65, (2024 + 65 - edad), (66 - edad), tabla_mort, 115, tasa_j_eq
+    )) / (1 - (1 / (1 + tasa_j_eq))))
   
-  primas <-
-    c((ben_muerte_act + ben_muerte_pens + ben_anualidades) / denominador,
-      primas)
-  vp <- (ben_muerte_act + ben_muerte_pens + ben_anualidades)
-  anualidad <- denominador
+  prima <- ((ben_muerte_act + ben_muerte_pens + ben_anualidades) / (denominador))
   
   return(list(
-    primas = primas,
-    vp = vp,
-    anualidad = anualidad
+    prima = prima,
+    vp = (ben_muerte_act + ben_muerte_pens + ben_anualidades),
+    anualidad = denominador
   ))
 }
 
 ```
 
-para almacenar los datos de las primas, se usa como base el dataframe empleados. 
+Para almacenar los datos de las primas, se usa como base el dataframe empleados.
+
 ```{r}
 datos.hombres <- empleados[empleados$sexo == "M", ]
 
@@ -655,18 +767,18 @@ datos.mujeres <- datos.mujeres[!duplicated(datos.mujeres$edad), ]
 Se calculan las primas para hombres y mujeres, y se guardan en el dataframe de datos de cada uno.
 
 ```{r}
-resultados.hombres <- lapply(1:45, function(p) calcular_primas(p, qx.hombres))
+resultados.hombres <- lapply(21:65, function(p) calcular_primas(p, qx.hombres))
 primas.hombres <- sapply(resultados.hombres, function(res) res$prima)
 vp.hombres <- sapply(resultados.hombres, function(res) res$vp)
 anualidad.hombres <- sapply(resultados.hombres, function(res) res$anualidad)
 
-resultados.mujeres <- lapply(1:45, function(l) calcular_primas(l, qx.mujeres))
+resultados.mujeres <- lapply(21:65, function(l) calcular_primas(l, qx.mujeres))
 primas.mujeres <- sapply(resultados.mujeres, function(res) res$prima)
 vp.mujeres <- sapply(resultados.mujeres, function(res) res$vp)
 anualidad.mujeres <- sapply(resultados.mujeres, function(res) res$anualidad)
 ```
 
-
+Se agregan las columnas correspondientes.
 
 ```{r}
 datos.hombres[["primas"]] <- primas.hombres
@@ -678,12 +790,15 @@ datos.mujeres[["vp"]] <- vp.mujeres
 datos.mujeres[["anualidad"]] <- anualidad.mujeres
 ```
 
+La prima nivelada.
+
 ```{r}
-prima_nivelada <- (sum(datos.hombres$vp) + sum(datos.mujeres$vp)) / (sum(datos.hombres$anualidad) + sum(datos.hombres$anualidad))
+prima_nivelada <- (sum(datos.hombres$vp) + sum(datos.mujeres$vp)) / (sum(datos.hombres$anualidad) + sum(datos.mujeres$anualidad))
+
 print(paste("La prima media nivelada es:", round(prima_nivelada, 2)))
 ```
 
-### Metodos de reducciones de primas en un 10%
+### Métodos de reducciones de primas en un 10%
 
 En el primer método se va a reducir el monto de la pension por aproximación manual, al reducir los pagos mensuales, los costos mensuales se disminuyen, lo cual resulta beneficioso para la empresa, ya que necesitaria menos fondos para cubrir sus gastos, sin embargo, trae efectos negativos en los empleados, principalmente debido a que el monto de la pension se va a reducir.
 
