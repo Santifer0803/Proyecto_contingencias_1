@@ -830,30 +830,41 @@ print(paste("La prima media nivelada es:", round(prima_nivelada, 2)))
 En el primer método se va a reducir el monto de la pension por aproximación manual, al reducir los pagos mensuales, los costos mensuales se disminuyen, lo cual resulta beneficioso para la empresa, ya que necesitaria menos fondos para cubrir sus gastos, sin embargo, trae efectos negativos en los empleados, principalmente debido a que el monto de la pension se va a reducir.
 
 ```{r}
-calcular_primas_metodo1 <- function(edad, tabla_mort){
-  tasa_j_eq <- ((1.03)*(1.04)) -1
-  v <- (1+0.03)/(1+tasa_j_eq)
-  primas <- c()
+calcular_primas_metodo1 <- function(edad, tabla_mort) {
+  tasa_j_eq <- (((1.03) * (1.04)) - 1)
+  v <- (1 + 0.03) / (1 + tasa_j_eq)
   
-ben_muerte_act <- 5000000 * sum(sapply(0:(64 - edad), function(i) {
-  v^(i + 1) * calcular.kpx(edad, i, tabla_mort) * tabla_mort[[edad + i + 1, 26 + i]]
-}))
+  # Caso si muere antes de 65
+  ben_muerte_act <-
+    ifelse(edad >= 65,
+           0,
+           5000000 * Axn(edad, 2024, (64 - edad), tabla_mort, 115, tasa_j_eq))
   
-  ben_muerte_pens <- v^(65-edad)*calcular.kpx(edad, 65-edad, tabla_mort)*1000000*sum(sapply((0:50), function(k) v^(k+1) * calcular.kpx(edad, k, tabla_mort)*tabla_mort[[65 + k + 1, 26 + 65 + k]]))
+  # Caso de muerte después de 65
+  ben_muerte_pens <-
+    1000000 * Ax(65, (2024 + 65 - edad), tabla_mort, 115, tasa_j_eq) * ((1 / (1 + tasa_j_eq)) ^ (65 - edad)) * calcular.kpx(edad, (65 - edad), tabla_mort)
   
-  ben_anualidades <- v^(65-edad)*calcular.kpx(edad, 65-edad, tabla_mort)*13*267000 * sum(sapply((0:50), function(m) v^(m+1)* calcular.kpx(65, m, tabla_mort)))
+  # Pensión
+  ben_anualidades <-
+    13 * 265500 * (((1 - Ax(
+      65, (2024 + 65 - edad), tabla_mort, 115, tasa_j_eq
+    )) / (1 - (1 / (1 + tasa_j_eq)))) - 1) * ((1 / (1 + tasa_j_eq)) ^ (65 - edad)) * calcular.kpx(edad, (65 - edad), tabla_mort)
   
-  denominador <- sum(sapply((1:(66-edad)), function(r) v^(r) * calcular.kpx(edad, r, tabla_mort)))
+  # Anualidad de las primas
+  denominador <- ((1 - dotal(
+      65, (2024 + 65 - edad), (66 - edad), tabla_mort, 115, tasa_j_eq
+    )) / (1 - (1 / (1 + tasa_j_eq))))
   
-  primas <- c((ben_muerte_act + ben_muerte_pens + ben_anualidades)/denominador, primas)
+  prima <- ((ben_muerte_act + ben_muerte_pens + ben_anualidades) / (denominador))
   
-  return(primas)
+  return(prima)
 }
+
 ```
 
 ```{r}
-primas.hombres_metodo1 <- sapply((1:45), function(p) calcular_primas_metodo1(p, qx.hombres))
-primas.mujeres_metodo1 <- sapply((1:45), function(l) calcular_primas_metodo1(l, qx.mujeres))
+primas.hombres_metodo1 <- sapply((21:65), function(p) calcular_primas_metodo1(p, qx.hombres))
+primas.mujeres_metodo1 <- sapply((21:65), function(l) calcular_primas_metodo1(l, qx.mujeres))
 ```
 
 ```{r}
@@ -861,40 +872,66 @@ datos.hombres[["primas_metodo1"]] <- primas.hombres_metodo1
 datos.mujeres[["primas_metodo1"]] <- primas.mujeres_metodo1
 ```
 
-El segundo metodo consiste en que ya las personas no van a poder jubilarse hasta la edad de 66, esto resulta en menos pagos de pensiones, y a su vez que los empleados van a aportar por mas años al fondo de pensiones; de igual forma el valor presente disminuye, por otro lado, los empleados podran acumular beneficios por mas tiempo.
+```{r}
+datos.hombres[["porcentaje.metodo1"]] <- datos.hombres[["primas_metodo1"]] / datos.hombres$primas
+datos.mujeres[["porcentaje.metodo1"]] <- datos.mujeres[["primas_metodo1"]] / datos.mujeres$primas
+```
+
+
+
+Para el segundo método de reducción en un 10% de las primas, se tomaron varios supuestos, primero ahora las personas se pueden pensionar hasta la edad de 67 años y no a los 65, segundo el monto de la pensión se redujo en 2 mil colones, lo que puede parecer un monto bajo sin embargo al ser un monto que se paga anualmente hasta que la persona muera se puede convertir en suma bastante considerable, además se redujo el beneficio de muerte de empleado activo a dos millones novecientos mil, y de igual forma el monto de beneficio en caso de muerte del pensionado se disminuyó a setecientos sesenta mil.
 
 ```{r}
-calcular_primas_metodo2 <- function(edad, tabla_mort){
-  tasa_j_eq <- ((1.03)*(1.04)) -1
-  v <- (1+0.03)/(1+tasa_j_eq)
-  primas <- c()
+calcular_primas_metodo2 <- function(edad, tabla_mort) {
+  tasa_j_eq <- (((1.03) * (1.04)) - 1)
+  v <- (1 + 0.03) / (1 + tasa_j_eq)
   
-ben_muerte_act <- 5000000 * sum(sapply(0:(66 - edad), function(i) {
-  v^(i + 1) * calcular.kpx(edad, i, tabla_mort) * tabla_mort[[edad + i + 1, 26 + i]]
-}))
+  # Caso si muere antes de 67
+  ben_muerte_act <-
+    ifelse(edad >= 67,
+           0,
+           2900000 * Axn(edad, 2024, (66 - edad), tabla_mort, 115, tasa_j_eq))
   
-  ben_muerte_pens <- v^(67-edad)*calcular.kpx(edad, 67-edad, tabla_mort)*1000000*sum(sapply((0:48), function(k) v^(k+1) * calcular.kpx(edad, k, tabla_mort)*tabla_mort[[67 + k + 1, 26 + 67 + k]]))
+  # Caso de muerte después de 67
+  ben_muerte_pens <-
+    760000 * Ax(67, (2024 + 67 - edad), tabla_mort, 115, tasa_j_eq) * ((1 / (1 + tasa_j_eq)) ^ (67 - edad)) * calcular.kpx(edad, (67 - edad), tabla_mort)
   
-  ben_anualidades <- v^(67-edad)*calcular.kpx(edad, 67-edad, tabla_mort)*13*300000 * sum(sapply((0:48), function(m) v^(m+1)* calcular.kpx(67, m, tabla_mort)))
+  # Pensión
+  ben_anualidades <-
+    13 * 298000 * (((1 - Ax(
+      67, (2024 + 67 - edad), tabla_mort, 115, tasa_j_eq
+    )) / (1 - (1 / (1 + tasa_j_eq)))) - 1) * ((1 / (1 + tasa_j_eq)) ^ (67 - edad)) * calcular.kpx(edad, (67 - edad), tabla_mort)
   
-  denominador <- sum(sapply((1:(68-edad)), function(r) v^(r) * calcular.kpx(edad, r, tabla_mort)))
+  # Anualidad de las primas
+  denominador <- ((1 - dotal(
+      67, (2024 + 67 - edad), (68 - edad), tabla_mort, 115, tasa_j_eq
+    )) / (1 - (1 / (1 + tasa_j_eq))))
   
-  primas <- c((ben_muerte_act + ben_muerte_pens + ben_anualidades)/denominador, primas)
+  prima <- ((ben_muerte_act + ben_muerte_pens + ben_anualidades) / (denominador))
   
-  return(primas)
+  return(prima)
 }
 ```
 
 ```{r}
-primas.hombres_metodo2 <- sapply((1:45), function(p) calcular_primas_metodo2(p, qx.hombres))
-primas.mujeres_metodo2 <- sapply((1:45), function(l) calcular_primas_metodo2(l, qx.mujeres))
+#hacemos un sapply para poder obtener la prima de cada edad, tanto de homres como de mujers
+primas.hombres_metodo2 <- sapply((21:67), function(p) calcular_primas_metodo2(p, qx.hombres))
+primas.mujeres_metodo2 <- sapply((21:67), function(l) calcular_primas_metodo2(l, qx.mujeres))
 ```
 
 ```{r}
-datos.hombres[["primas_metodo2"]] <- primas.hombres_metodo2
-datos.mujeres[["primas_metodo12"]] <- primas.mujeres_metodo2
+#creamos un nuevo df para poder guardar las primas que se van a pagar ahora hasta los 67 años.
+primas.metodos <- data.frame("edad" = 21:67)
+#guardamos las primas en una columa nueva.
+primas.metodos[["primas_metodo2.hombres"]] <- primas.hombres_metodo2
+primas.metodos[["primas_metodo2.mujeres"]] <- primas.mujeres_metodo2
 ```
 
+Ahora vamos a ver que, si sacamos el promedio a estas 67 primas para ambos sexos, y sacamos el promedio de las primeras 65 primas originales, de igual forma para ambos sexos, vamos a tomar el primer resultado y dividirlo entre el original de las 65 primas, se puede notar que se logra reducir en promedio las primas en un 10%.
+```{r}
+promedio.hombres <-mean(primas.metodos[["primas_metodo2.hombres"]]) / mean(datos.hombres[["primas"]])
+promedio.mujeres <-mean(primas.metodos[["primas_metodo2.mujeres"]]) / mean(datos.mujeres[["primas"]])
+```
 
 ## Modelo estocástico
 
