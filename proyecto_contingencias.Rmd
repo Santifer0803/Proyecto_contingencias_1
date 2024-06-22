@@ -741,7 +741,7 @@ costos.pensionados.fallecidosm <- def.proyeccion.finac.pen(pensionados.fallecido
 Se crea la funcion que calcula primas anuales.
 
 ```{r fun_primas}
-calcular_primas <- function(edad, tabla_mort) {
+calcular.primas <- function(edad, tabla_mort) {
   tasa_j_eq <- (((1.03) * (1.04)) - 1)
   v <- (1 + 0.03) / (1 + tasa_j_eq)
   
@@ -759,14 +759,17 @@ calcular_primas <- function(edad, tabla_mort) {
   ben_anualidades <-
     13 * 300000 * (((1 - Ax(
       65, (2024 + 65 - edad), tabla_mort, 115, tasa_j_eq
-    )) / (1 - (1 / (1 + tasa_j_eq)))) - 1) * ((1 / (1 + tasa_j_eq)) ^ (65 - edad)) * calcular.kpx(edad, (65 - edad), tabla_mort)
+    )) / (1 - (1 / (
+      1 + tasa_j_eq
+    )))) - 1) * ((1 / (1 + tasa_j_eq)) ^ (65 - edad)) * calcular.kpx(edad, (65 - edad), tabla_mort)
   
   # Anualidad de las primas
   denominador <- ((1 - dotal(
-      65, (2024 + 65 - edad), (66 - edad), tabla_mort, 115, tasa_j_eq
-    )) / (1 - (1 / (1 + tasa_j_eq))))
+    65, (2024 + 65 - edad), (66 - edad), tabla_mort, 115, tasa_j_eq
+  )) / (1 - (1 / (1 + tasa_j_eq))))
   
-  prima <- ((ben_muerte_act + ben_muerte_pens + ben_anualidades) / (denominador))
+  prima <-
+    ((ben_muerte_act + ben_muerte_pens + ben_anualidades) / (denominador))
   
   return(list(
     prima = prima,
@@ -794,12 +797,12 @@ datos.mujeres <- datos.mujeres[!duplicated(datos.mujeres$edad), ]
 Se calculan las primas para hombres y mujeres, y se guardan en el dataframe de datos de cada uno.
 
 ```{r}
-resultados.hombres <- lapply(21:65, function(p) calcular_primas(p, qx.hombres))
+resultados.hombres <- lapply(21:65, function(p) calcular.primas(p, qx.hombres))
 primas.hombres <- sapply(resultados.hombres, function(res) res$prima)
 vp.hombres <- sapply(resultados.hombres, function(res) res$vp)
 anualidad.hombres <- sapply(resultados.hombres, function(res) res$anualidad)
 
-resultados.mujeres <- lapply(21:65, function(l) calcular_primas(l, qx.mujeres))
+resultados.mujeres <- lapply(21:65, function(l) calcular.primas(l, qx.mujeres))
 primas.mujeres <- sapply(resultados.mujeres, function(res) res$prima)
 vp.mujeres <- sapply(resultados.mujeres, function(res) res$vp)
 anualidad.mujeres <- sapply(resultados.mujeres, function(res) res$anualidad)
@@ -829,8 +832,8 @@ print(paste("La prima media nivelada es:", round(prima_nivelada, 2)))
 
 En el primer método se va a reducir el monto de la pension por aproximación manual, al reducir los pagos mensuales, los costos mensuales se disminuyen, lo cual resulta beneficioso para la empresa, ya que necesitaria menos fondos para cubrir sus gastos, sin embargo, trae efectos negativos en los empleados, principalmente debido a que el monto de la pension se va a reducir.
 
-```{r}
-calcular_primas_metodo1 <- function(edad, tabla_mort) {
+```{r reduccion_primas_1}
+calcular.primas.metodo1 <- function(edad, tabla_mort) {
   tasa_j_eq <- (((1.03) * (1.04)) - 1)
   v <- (1 + 0.03) / (1 + tasa_j_eq)
   
@@ -863,8 +866,8 @@ calcular_primas_metodo1 <- function(edad, tabla_mort) {
 ```
 
 ```{r}
-primas.hombres_metodo1 <- sapply((21:65), function(p) calcular_primas_metodo1(p, qx.hombres))
-primas.mujeres_metodo1 <- sapply((21:65), function(l) calcular_primas_metodo1(l, qx.mujeres))
+primas.hombres_metodo1 <- sapply((21:65), function(p) calcular.primas.metodo1(p, qx.hombres))
+primas.mujeres_metodo1 <- sapply((21:65), function(l) calcular.primas.metodo1(l, qx.mujeres))
 ```
 
 ```{r}
@@ -877,12 +880,10 @@ datos.hombres[["porcentaje.metodo1"]] <- datos.hombres[["primas_metodo1"]] / dat
 datos.mujeres[["porcentaje.metodo1"]] <- datos.mujeres[["primas_metodo1"]] / datos.mujeres$primas
 ```
 
+Para el segundo método de reducción en un 10% de las primas, se tomaron varios supuestos, primero, ahora las personas se pueden pensionar hasta la edad de 67 años y no a los 65, segundo, el monto de la pensión se redujo en 2 mil colones, lo que puede parecer un monto bajo sin embargo al ser un monto que se paga anualmente hasta que la persona muera se puede convertir en suma bastante considerable, además se redujo el beneficio de muerte de empleado activo a dos millones novecientos mil, y de igual forma el monto de beneficio en caso de muerte del pensionado se disminuyó a setecientos sesenta mil.
 
-
-Para el segundo método de reducción en un 10% de las primas, se tomaron varios supuestos, primero ahora las personas se pueden pensionar hasta la edad de 67 años y no a los 65, segundo el monto de la pensión se redujo en 2 mil colones, lo que puede parecer un monto bajo sin embargo al ser un monto que se paga anualmente hasta que la persona muera se puede convertir en suma bastante considerable, además se redujo el beneficio de muerte de empleado activo a dos millones novecientos mil, y de igual forma el monto de beneficio en caso de muerte del pensionado se disminuyó a setecientos sesenta mil.
-
-```{r}
-calcular_primas_metodo2 <- function(edad, tabla_mort) {
+```{r reduccion_primas_2}
+calcular.primas.metodo2 <- function(edad, tabla_mort) {
   tasa_j_eq <- (((1.03) * (1.04)) - 1)
   v <- (1 + 0.03) / (1 + tasa_j_eq)
   
@@ -914,23 +915,25 @@ calcular_primas_metodo2 <- function(edad, tabla_mort) {
 ```
 
 ```{r}
-#hacemos un sapply para poder obtener la prima de cada edad, tanto de homres como de mujers
-primas.hombres_metodo2 <- sapply((21:67), function(p) calcular_primas_metodo2(p, qx.hombres))
-primas.mujeres_metodo2 <- sapply((21:67), function(l) calcular_primas_metodo2(l, qx.mujeres))
+# Hacemos un sapply para poder obtener la prima de cada edad, tanto de homres como de mujers
+primas.hombres_metodo2 <- sapply((21:67), function(p) calcular.primas.metodo2(p, qx.hombres))
+primas.mujeres_metodo2 <- sapply((21:67), function(l) calcular.primas.metodo2(l, qx.mujeres))
 ```
 
 ```{r}
-#creamos un nuevo df para poder guardar las primas que se van a pagar ahora hasta los 67 años.
+# Creamos un nuevo df para poder guardar las primas que se van a pagar ahora hasta los 67 años.
 primas.metodos <- data.frame("edad" = 21:67)
-#guardamos las primas en una columa nueva.
+
+# Guardamos las primas en una columa nueva.
 primas.metodos[["primas_metodo2.hombres"]] <- primas.hombres_metodo2
 primas.metodos[["primas_metodo2.mujeres"]] <- primas.mujeres_metodo2
 ```
 
-Ahora vamos a ver que, si sacamos el promedio a estas 67 primas para ambos sexos, y sacamos el promedio de las primeras 65 primas originales, de igual forma para ambos sexos, vamos a tomar el primer resultado y dividirlo entre el original de las 65 primas, se puede notar que se logra reducir en promedio las primas en un 10%.
+Ahora vamos a ver que, si sacamos el promedio a estas 67 primas para ambos sexos, y sacamos el promedio de las primeras 65 primas originales, de igual forma para ambos sexos, vamos a tomar el primer resultado y dividirlo entre el original de las 65 primas, se puede notar que se logra reducir en promedio las primas en un $10\%$.
+
 ```{r}
-promedio.hombres <-mean(primas.metodos[["primas_metodo2.hombres"]]) / mean(datos.hombres[["primas"]])
-promedio.mujeres <-mean(primas.metodos[["primas_metodo2.mujeres"]]) / mean(datos.mujeres[["primas"]])
+promedio.hombres <- mean(primas.metodos[["primas_metodo2.hombres"]]) / mean(datos.hombres[["primas"]])
+promedio.mujeres <- mean(primas.metodos[["primas_metodo2.mujeres"]]) / mean(datos.mujeres[["primas"]])
 ```
 
 ## Modelo estocástico
@@ -1061,11 +1064,32 @@ modelo.estocastico <- function(matriz.prob, prom.primas, densidad, lista.primas)
 Probamos el modelo para cada género.
 
 ```{r modelo_estocastico}
-ini <- Sys.time()
-prueba <- modelo.estocastico(matriz.probh, 0, densidad.h, lista.primash)
-fin <- Sys.time()
-print(fin - ini)
+primas.estocasticash <- modelo.estocastico(matriz.probh, 0, densidad.h, lista.primash)
+primas.estocasticasm <- modelo.estocastico(matriz.probm, 0, densidad.m, lista.primasm)
 ```
+
+Para comparar con las primas del modelo determinístico, se procede a extraer el cuartíl 50 y 90 de cada edad para todas las simulaciones.
+
+```{r cuartiles_estocasticos}
+# Inicialmente, se pasan a matrices las simulaciones
+matriz.estoch <- do.call(cbind, primas.estocasticash)
+matriz.estocm <- do.call(cbind, primas.estocasticasm)
+
+# Se agrega formato a las filas de estas
+rownames(matriz.estoch) <- c(21:65)
+rownames(matriz.estocm) <- c(21:65)
+
+# Se extraen los cuartiles correspondientes y se dejan en un DataFrame
+df.primash <- data.frame(primas_originales = datos.hombres$primas,
+                         primas_cuartil_50 = apply(matriz.estoch, MARGIN = 1, FUN = median),
+                         primas_cuartil_90 = apply(matriz.estoch, MARGIN = 1, FUN = quantile, probs = 0.9))
+
+df.primasm <- data.frame(primas_originales = datos.mujeres$primas,
+                         primas_cuartil_50 = apply(matriz.estocm, MARGIN = 1, FUN = median),
+                         primas_cuartil_90 = apply(matriz.estocm, MARGIN = 1, FUN = quantile, probs = 0.9))
+```
+
+
 
 ## Gráficos
 
