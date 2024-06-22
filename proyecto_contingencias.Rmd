@@ -1081,9 +1081,25 @@ df.primasm <- data.frame(primas_originales = datos.mujeres$primas,
 
 ## Gráficos
 
-En esta sección se pondrán todos los gráficos que se presenten para el proyecto.
+En esta sección se pondrán todos los gráficos que se presenten para el proyecto. Iniciando con algunos gráficos que describen la base de datos a trabajar.
 
-```{r comparacion_empleados activos}
+```{r bd_empleados}
+# Gráfico de edades de los empleados
+ggplot(empleados, aes(x = edad)) +
+  geom_histogram(binwidth = 1, fill = "bisque3", color = "black") +
+  labs(x = "Edad", y = "Cantidad", caption = "Fuente: elaboración propia") +
+  theme_minimal()
+
+# Gráfico de sexos de la empresa
+ggplot(empleados, aes(x = sexo)) +
+  geom_bar(fill = "cornflowerblue") +
+  labs(x = "Sexo", y = "Cantidad", caption = "Fuente: elaboración propia") +
+  theme_minimal()
+```
+
+Después, las proyecciones demográficas de empleados activos.
+
+```{r comparacion_empleados_activos}
 # Se inicia juntando los datos necesarios en un DataFrame
 df.grafico <- data.frame(
   años = activos.fallecidosh[[1]]$anno,
@@ -1139,6 +1155,8 @@ ggplot(df.grafico, aes(x = años)) +
 # La variable no re ocupará más adelante, por lo que se elimina
 rm(df.grafico)
 ```
+
+Luego, las proyecciones demográficas para empleados pensionados.
 
 ```{r comparacion_pensionados}
 # Se crea un DataFrame con los datos necesarios
@@ -1196,6 +1214,8 @@ ggplot(df.grafico, aes(x = años)) +
 # Se elimina la variable que guarda el gráfico
 rm(df.grafico)
 ```
+
+Posteriormente, los gráficos de comparación de primas.
 
 ```{r comparacion_primas}
 
@@ -1279,6 +1299,8 @@ ggplot(df.primasm, aes(x = c(21:65))) +
 
 ```
 
+Siguiendo con los gráficos de proyecciones financieras.
+
 ```{r proyeccion_finac_muertes_empleados}
 costos.pensionados.fallecidosh$genero <- "Hombres"
 costos.pensionados.fallecidosm$genero <- "Mujeres"
@@ -1297,6 +1319,8 @@ ggplot(costos.combinados, aes(x = anno)) +
     values = c("Hombres" = "blue", "Mujeres" = "pink")) +
   theme_minimal()
 ```
+
+Luego, las comparaciones de primas para hombres.
 
 ```{r tipos_primas_hombres, warning = FALSE}
 # Extraemos las columnas que ocupamos de cada df
@@ -1325,6 +1349,7 @@ ggplot(primas.combinadas.h, aes(x = edad)) +
   theme_minimal()
 
 ```
+Y un gráfico análogo para las mujeres.
 
 ```{r tipo_primas_mujeres, warning = FALSE}
 # Extraemos las columnas que ocupamos de cada df
