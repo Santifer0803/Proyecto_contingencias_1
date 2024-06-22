@@ -822,9 +822,17 @@ prima_nivelada <- (sum(datos.hombres$vp) + sum(datos.mujeres$vp)) / (sum(datos.h
 print(paste("La prima media nivelada es:", round(prima_nivelada, 2)))
 ```
 
+```{r eliminar_columnas_innecesarias}
+datos.hombres <- datos.hombres %>%
+  select(-vp, -anualidad)
+
+datos.mujeres <- datos.mujeres %>%
+  select(-vp, -anualidad)
+```
+
 ### Métodos de reducciones de primas en un 10%
 
-En el primer método se va a reducir el monto de la pension por aproximación manual. Al reducir los pagos mensuales, los costos mensuales se disminuyen, lo cual resulta beneficioso para la empresa, ya que necesitaria menos fondos para cubrir sus gastos. Sin embargo, trae efectos negativos en los empleados, principalmente debido a que el monto de la pension se va a reducir.
+En el primer método se va a reducir el monto de la pensión por aproximación manual. Al reducir los pagos mensuales, los costos mensuales se disminuyen, lo cual resulta beneficioso para la empresa, ya que necesitaria menos fondos para cubrir sus gastos. Sin embargo, trae efectos negativos en los empleados, principalmente debido a que el monto de la pension se va a reducir.
 
 ```{r reduccion_primas_1}
 calcular.primas.metodo1 <- function(edad, tabla_mort) {
@@ -859,19 +867,22 @@ calcular.primas.metodo1 <- function(edad, tabla_mort) {
 
 ```
 
-```{r}
-primas.hombres_metodo1 <- sapply((21:65), function(p) calcular.primas.metodo1(p, qx.hombres))
-primas.mujeres_metodo1 <- sapply((21:65), function(l) calcular.primas.metodo1(l, qx.mujeres))
+```{r reduccion_primas_metodo1}
+primas.hombres.metodo1 <- sapply((21:65), function(p) calcular.primas.metodo1(p, qx.hombres))
+primas.mujeres.metodo1 <- sapply((21:65), function(l) calcular.primas.metodo1(l, qx.mujeres))
+
+datos.hombres$primas.metodo1 <- primas.hombres.metodo1
+datos.mujeres$primas.metodo1 <- primas.mujeres.metodo1
+
+datos.hombres$porcentaje.metodo1 <- datos.hombres$primas.metodo1 / datos.hombres$primas
+datos.mujeres$porcentaje.metodo1 <- datos.mujeres$primas.metodo1 / datos.mujeres$primas
 ```
 
-```{r}
-datos.hombres[["primas_metodo1"]] <- primas.hombres_metodo1
-datos.mujeres[["primas_metodo1"]] <- primas.mujeres_metodo1
-```
+Seguidamente se calculará el promedio de las primas del método 1 y el promedio de las primas originales, para ambos sexos, para luego dividir, respectivamente, estos dos resultados, con el fin de notar que se logra reducir en promedio las primas en un $10\%$.
 
-```{r}
-datos.hombres[["porcentaje.metodo1"]] <- datos.hombres[["primas_metodo1"]] / datos.hombres$primas
-datos.mujeres[["porcentaje.metodo1"]] <- datos.mujeres[["primas_metodo1"]] / datos.mujeres$primas
+```{r promedio_metodo2}
+mean(datos.hombres$primas.metodo1[1:45]) / mean(datos.hombres$primas[1:45])
+mean(datos.mujeres$primas.metodo1[1:45]) / mean(datos.mujeres$primas[1:45])
 ```
 
 Para el segundo método de reducción en un 10% de las primas, se tomaron varios supuestos. Primero, ahora las personas se pueden pensionar hasta la edad de 67 años y no a los 65; además, el monto de la pensión se redujo en 2 mil colones, lo que puede parecer un monto bajo, pero al ser un monto que se paga anualmente hasta que la persona muera se puede convertir en suma bastante considerable. También se redujo el beneficio de muerte de empleado activo a dos millones novecientos mil, y de igual forma el monto de beneficio en caso de muerte del pensionado se disminuyó a setecientos sesenta mil.
@@ -908,26 +919,32 @@ calcular.primas.metodo2 <- function(edad, tabla_mort) {
 }
 ```
 
-```{r}
-# Hacemos un sapply para poder obtener la prima de cada edad, tanto de homres como de mujers
-primas.hombres_metodo2 <- sapply((21:67), function(p) calcular.primas.metodo2(p, qx.hombres))
-primas.mujeres_metodo2 <- sapply((21:67), function(l) calcular.primas.metodo2(l, qx.mujeres))
+```{r reduccion_primas_metodo1}
+fila.nula1 <- data.frame(edad = NA, primas = NA, primas.metodo1 = NA, porcentaje.metodo1 = NA)
+fila.nula2 <- data.frame(edad = NA, primas = NA, primas.metodo1 = NA, porcentaje.metodo1 = NA)
+
+datos.hombres <- rbind(datos.hombres, fila.nula1, fila.nula2)
+datos.mujeres <- rbind(datos.mujeres, fila.nula1, fila.nula2)
+
+rm(fila.nula1)
+rm(fila.nula2)
+
+# Hacemos un sapply para poder obtener la prima de cada edad, tanto de hombres como de mujeres
+primas.hombres.metodo2 <- sapply((21:67), function(p) calcular.primas.metodo2(p, qx.hombres))
+primas.mujeres.metodo2 <- sapply((21:67), function(l) calcular.primas.metodo2(l, qx.mujeres))
+
+datos.hombres$primas.metodo2 <- primas.hombres.metodo2
+datos.mujeres$primas.metodo2 <- primas.mujeres.metodo2
+
+datos.hombres$porcentaje.metodo2 <- datos.hombres$primas.metodo2 / datos.hombres$primas
+datos.mujeres$porcentaje.metodo2 <- datos.mujeres$primas.metodo2 / datos.mujeres$primas
 ```
 
-```{r}
-# Creamos un nuevo df para poder guardar las primas que se van a pagar ahora hasta los 67 años.
-primas.metodos <- data.frame("edad" = 21:67)
+Ahora vamos a ver que, si sacamos el promedio a estas 67 primas y el promedio de las primeras 65 primas originales, para ambos sexos, tomando el primer resultado y dividiéndolo entre el original de las 65 primas, se puede notar que se logra reducir en promedio las primas en un $10\%$.
 
-# Guardamos las primas en una columa nueva.
-primas.metodos[["primas_metodo2.hombres"]] <- primas.hombres_metodo2
-primas.metodos[["primas_metodo2.mujeres"]] <- primas.mujeres_metodo2
-```
-
-Ahora vamos a ver que, si sacamos el promedio a estas 67 primas para ambos sexos, y sacamos el promedio de las primeras 65 primas originales, de igual forma para ambos sexos, vamos a tomar el primer resultado y dividirlo entre el original de las 65 primas, se puede notar que se logra reducir en promedio las primas en un $10\%$.
-
-```{r}
-promedio.hombres <- mean(primas.metodos[["primas_metodo2.hombres"]]) / mean(datos.hombres[["primas"]])
-promedio.mujeres <- mean(primas.metodos[["primas_metodo2.mujeres"]]) / mean(datos.mujeres[["primas"]])
+```{r promedio_metodo2}
+mean(datos.hombres$primas.metodo2) / mean(datos.hombres$primas[1:45])
+mean(datos.mujeres$primas.metodo2) / mean(datos.mujeres$primas[1:45])
 ```
 
 ## Modelo estocástico
@@ -990,8 +1007,8 @@ matriz.rndh <- t(apply(matriz.rndh, 1, fila.muerte))
 matriz.rndm <- t(apply(matriz.rndm, 1, fila.muerte))
 
 # Índice del primer falso
-idh <- unname(sapply(1:filmat, function(m) which(!matriz.rndh[m, ])[1]) - 1)
-idm <- unname(sapply(1:filmat, function(m) which(!matriz.rndm[m, ])[1]) - 1)
+idh <- sapply(1:filmat, function(m) which(!matriz.rndh[m, ])[1]) - 1
+idm <- sapply(1:filmat, function(m) which(!matriz.rndm[m, ])[1]) - 1
 
 # Anualidades
 anh <- sapply(1:filmat, function(n) sum((1 + j) ^ -(0:(min(idh[n], (65 - 20 - n))))))
@@ -1027,7 +1044,7 @@ modelo.estocastico <- function(matriz.prob, prom.primas, densidad, lista.primas)
   matriz.rnd <- t(apply(matriz.rnd, 1, fila.muerte))
   
   # Índice del primer falso
-  id <- unname(sapply(1:filmat, function(m) which(!matriz.rnd[m, ])[1]) - 1)
+  id <- sapply(1:filmat, function(m) which(!matriz.rnd[m, ])[1]) - 1
   
   # Anualidad
   an <- sapply(1:filmat, function(n) sum((1 + j) ^ -(0:id[n])))
@@ -1070,11 +1087,11 @@ rownames(matriz.estoch) <- c(21:65)
 rownames(matriz.estocm) <- c(21:65)
 
 # Se extraen los cuartiles correspondientes y se dejan en un DataFrame
-df.primash <- data.frame(primas_originales = datos.hombres$primas,
+df.primash <- data.frame(primas_originales = datos.hombres$primas[1:45],
                          primas_cuartil_50 = apply(matriz.estoch, MARGIN = 1, FUN = median),
                          primas_cuartil_90 = apply(matriz.estoch, MARGIN = 1, FUN = quantile, probs = 0.9))
 
-df.primasm <- data.frame(primas_originales = datos.mujeres$primas,
+df.primasm <- data.frame(primas_originales = datos.mujeres$primas[1:45],
                          primas_cuartil_50 = apply(matriz.estocm, MARGIN = 1, FUN = median),
                          primas_cuartil_90 = apply(matriz.estocm, MARGIN = 1, FUN = quantile, probs = 0.9))
 ```
@@ -1156,7 +1173,7 @@ ggplot(df.grafico, aes(x = años)) +
 rm(df.grafico)
 ```
 
-Luego, las proyecciones demográficas para empleados pensionados.
+Luego, las proyecciones demográficas para pensionados.
 
 ```{r comparacion_pensionados}
 # Se crea un DataFrame con los datos necesarios
@@ -1322,61 +1339,50 @@ ggplot(costos.combinados, aes(x = anno)) +
 
 Luego, las comparaciones de primas para hombres.
 
-```{r tipos_primas_hombres, warning = FALSE}
+```{r tipos_primas}
 # Extraemos las columnas que ocupamos de cada df
-primas.original.h <- datos.hombres[, c("edad", "primas")]
-primas.metodo1.h <- datos.hombres[, c("edad", "primas_metodo1")]
-primas.metodo2.h <- primas.metodos[, c("edad", "primas_metodo2.hombres")]
+primas.metodo1 <- datos.hombres[1:45, c("edad", "porcentaje.metodo1")]
+primas.metodo2 <- datos.hombres[1:45, c("edad", "porcentaje.metodo2")]
 
 # Fusionamos los df en uno solo por la edad
-primas.combinadas.h <- merge(primas.original.h, primas.metodo1.h, by = "edad", all = TRUE)
-primas.combinadas.h <- merge(primas.combinadas.h, primas.metodo2.h, by = "edad", all = TRUE)
+primas.combinadas <- merge(primas.metodo1, primas.metodo2, by = "edad", all = TRUE)
 
 # Crear el gráfico combinado
-ggplot(primas.combinadas.h, aes(x = edad)) +
-  geom_line(aes(y = primas, color = "Original")) +
-  geom_line(aes(y = primas_metodo1, color = "Método 1")) +
-  geom_line(aes(y = primas_metodo2.hombres, color = "Método 2")) +
+ggplot(primas.combinadas, aes(x = edad)) +
+  geom_line(aes(y = porcentaje.metodo1, color = "Método 1")) +
+  geom_line(aes(y = porcentaje.metodo2, color = "Método 2")) +
   labs(x = "Edad",
-       y = "Primas",
+       y = "Porcentaje de Primas",
        caption = "Fuente: elaboración propia") +
   scale_color_manual(
     name = "Tipo de Primas",
     values = c(
-      "Original" = "black", 
       "Método 1" = "blue", 
       "Método 2" = "red")) +
   theme_minimal()
 
-```
-Y un gráfico análogo para las mujeres.
+# Analogamente se hace un gráfico para las mujeres
+primas.metodo1 <- datos.mujeres[1:45, c("edad", "porcentaje.metodo1")]
+primas.metodo2 <- datos.mujeres[1:45, c("edad", "porcentaje.metodo2")]
 
-```{r tipo_primas_mujeres, warning = FALSE}
-# Extraemos las columnas que ocupamos de cada df
-primas_original <- datos.mujeres[, c("edad", "primas")]
-primas_metodo1 <- datos.mujeres[, c("edad", "primas_metodo1")]
-primas_metodo2 <- primas.metodos[, c("edad", "primas_metodo2.mujeres")]
+primas.combinadas <- merge(primas.metodo1, primas.metodo2, by = "edad", all = TRUE)
 
-# Fusionamos los df en uno solo por la edad
-primas_combinadas <- merge(primas_original, primas_metodo1, by = "edad", all = TRUE)
-primas_combinadas <- merge(primas_combinadas, primas_metodo2, by = "edad", all = TRUE)
-
-
-# Crear el gráfico combinado
-ggplot(primas_combinadas, aes(x = edad)) +
-  geom_line(aes(y = primas, color = "Original")) +
-  geom_line(aes(y = primas_metodo1, color = "Método 1")) +
-  geom_line(aes(y = primas_metodo2.mujeres, color = "Método 2")) +
+ggplot(primas.combinadas, aes(x = edad)) +
+  geom_line(aes(y = porcentaje.metodo1, color = "Método 1")) +
+  geom_line(aes(y = porcentaje.metodo2, color = "Método 2")) +
   labs(x = "Edad",
-       y = "Primas",
+       y = "Porcentaje de Primas",
        caption = "Fuente: elaboración propia") +
   scale_color_manual(
     name = "Tipo de Primas",
-    values = c("Original" = "salmon4", 
-               "Método 1" = "blue", 
-               "Método 2" = "green")) +
+    values = c(
+      "Método 1" = "skyblue2", 
+      "Método 2" = "indianred2")) +
   theme_minimal()
 
+# Se eliminan las variables innecesarias
+rm(primas.metodo1, primas.metodo2, primas.combinadas)
 ```
+
 
 
