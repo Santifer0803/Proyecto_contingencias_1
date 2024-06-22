@@ -1221,7 +1221,71 @@ ggplot(df.primash, aes(x = c(21:65))) +
 
 ```
 
+```{r proyeccionfinac_muertes_empleados}
+costos.pensionados.fallecidosh$genero <- "Hombres"
+costos.pensionados.fallecidosm$genero <- "Mujeres"
+
+# Combinar los dataframes
+costos.combinados <- rbind(costos.pensionados.fallecidosh, costos.pensionados.fallecidosm)
+
+# Crear el gráfico combinado
+ggplot(costos.combinados, aes(x = anno, y = costo, color = genero)) +
+  geom_line(size = 1) +
+  labs(title = "",
+       x = "Año",
+       y = "Costo ajustado por inflación") +
+  scale_color_manual(values = c("Hombres" = "blue", "Mujeres" = "pink")) +
+  theme_minimal()
+```
+
+```{r comparacion_primas_hombres, warning=FALSE}
+# Extraemos las columnas que ocupamos de cada df
+primas.original.h <- datos.hombres[, c("edad", "primas")]
+primas.metodo1.h <- datos.hombres[, c("edad", "primas_metodo1")]
+primas.metodo2.h <- primas.metodos[, c("edad", "primas_metodo2.hombres")]
+
+# Fusionamos los df en uno solo por la edad
+primas.combinadas.h <- merge(primas.original.h, primas.metodo1.h, by = "edad", all = TRUE)
+primas.combinadas.h <- merge(primas.combinadas.h, primas.metodo2.h, by = "edad", all = TRUE)
 
 
+# Crear el gráfico combinado
+ggplot(primas.combinadas.h) +
+  geom_line(aes(x = edad, y = primas, color = "Original"), size = 0) +
+  geom_line(aes(x = edad, y = primas_metodo1, color = "Método 1"), size = 0) +
+  geom_line(aes(x = edad, y = primas_metodo2.hombres, color = "Método 2"), size = 0) +
+  labs(title = "",
+       x = "Edad",
+       y = "Primas",
+       color = "Tipo de Primas") +
+  scale_color_manual(values = c("Original" = "black", "Método 1" = "blue", "Método 2" = "red")) +
+  theme_minimal()
+
+```
+
+```{r comparacion_primas_mujeres, warning=FALSE}
+# Extraemos las columnas que ocupamos de cada df
+primas_original <- datos.mujeres[, c("edad", "primas")]
+primas_metodo1 <- datos.mujeres[, c("edad", "primas_metodo1")]
+primas_metodo2 <- primas.metodos[, c("edad", "primas_metodo2.mujeres")]
+
+# Fusionamos los df en uno solo por la edad
+primas_combinadas <- merge(primas_original, primas_metodo1, by = "edad", all = TRUE)
+primas_combinadas <- merge(primas_combinadas, primas_metodo2, by = "edad", all = TRUE)
+
+
+# Crear el gráfico combinado
+ggplot(primas_combinadas) +
+  geom_line(aes(x = edad, y = primas, color = "Original"), size = 0) +
+  geom_line(aes(x = edad, y = primas_metodo1, color = "Método 1"), size = 0) +
+  geom_line(aes(x = edad, y = primas_metodo2.mujeres, color = "Método 2"), size = 0) +
+  labs(title = "",
+       x = "Edad",
+       y = "Primas",
+       color = "Tipo de Primas") +
+  scale_color_manual(values = c("Original" = "black", "Método 1" = "blue", "Método 2" = "red")) +
+  theme_minimal()
+
+```
 
 
