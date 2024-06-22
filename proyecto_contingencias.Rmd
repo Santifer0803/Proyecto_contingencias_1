@@ -6,35 +6,33 @@ date: "`r Sys.Date()`"
 output: html_document
 ---
 
-# Proyecto contingencias I
+# Proyecto Contingencias de Vida I
 
 ## Librerías necesarias
 
 ```{r librerías}
-
 pacman::p_load(readxl,
                ggplot2,
                dplyr,
                data.table)
-
 ```
 
 ## Funciones necesarias
 
-Se crea una función que extrae las probabilidades de muerte de más de un año, para un individuo.
+Se crea una función que extrae la probabilidad de que un individuo sobreviva k años.
 
 ```{r fun_kpx}
-#' Calcula las probabilidades de sobrevivencia de un individuo.
+#' Calcula la probabilidad de sobrevivencia de un individuo.
 #'
-#' Esta función calcula las probabilidades de sobrevivencia de un individuo de 
+#' Esta función calcula la probabilidad de sobrevivencia de un individuo de 
 #' de edad \code{x}, con base a la cantidad de años \code{k}, iniciando en el
-#' año 2024, con una \code{tabla} de mortalidad.
+#' año 2024, con una \code{tabla} de mortalidad dada.
 #'
 #' @param x (Integer) Edad en años cumplidos del individuo.
 #' @param k (Integer) Cantidad de años de sobrevivencia.
 #' @param tabla (DataFrame) Tabla de mortalidad con las probabilidades de muerte.
 #'
-#' @return (Numeric) Vector de probabilidades de sobrevivencia.
+#' @return (Numeric) Probabilidad de que el individuo sobreviva k años.
 #'
 calcular.kpx <- function(x, k, tabla){
   
@@ -48,7 +46,7 @@ calcular.kpx <- function(x, k, tabla){
 }
 ```
 
-Se pone el seguro temporal.
+Seguro temporal.
 
 ```{r seguro_temporal}
 #' Calcula la esperanza del valor presente de un seguro temporal.
@@ -83,7 +81,7 @@ Axn <- function(x, y, n, qx, w, i){
 }
 ```
 
-Seguro completo
+Seguro completo.
 
 ```{r seguro_completo}
 #' Calcula la esperanza del valor presente de un seguro completo.
@@ -157,7 +155,7 @@ Se creará una función para identificar el primer *False* de cada fila de una m
 
 ```{r fun_false}
 fila.muerte <- function(fila){
-  #' Toma el índice de un vector, una posición antes de un falso.
+  #' Función que devuelve el índice de un vector una posición antes de un falso.
   #'
   #' Calcula el índice de la \code{fila} de una matriz una posición antes de que
   #' el individuo fallezca.
@@ -177,20 +175,18 @@ fila.muerte <- function(fila){
 Se inicia con la descarga de los datos, para la base de datos de los empleados se agregaron columnas con la edad y el año de nacimiento, para los valores tqx se realizó una tabla dinámica separada por cada sexo, todos los cambios fueron hechos desde MS Excel.
 
 ```{r descarga_datos}
-
 empleados <- read_excel("datos/Base de datos.xlsx")
-qx.hombres <- read_excel("datos/tavid2000-2150.xlsx", 
-    sheet = "Sexo_1_limpio")
-qx.mujeres <- read_excel("datos/tavid2000-2150.xlsx", 
-    sheet = "Sexo_2_limpio")
 
+qx.hombres <- read_excel("datos/tavid2000-2150.xlsx", sheet = "Sexo_1_limpio")
+
+qx.mujeres <- read_excel("datos/tavid2000-2150.xlsx", sheet = "Sexo_2_limpio")
 ```
 
 Se cambia el nombre y el orden las columnas de la base de empleados.
 
 ```{r corr_columnas}
 
-# Nombre de columnas
+# Se renombran las columnas
 empleados <- empleados %>% 
   rename(
     id = "Número de empleado",
@@ -499,9 +495,9 @@ pob.pensionados <- function(df.pensionados, df.muertes){
 
 ```
 
-Se guardan las proyecciones demográficas de pensionados para hombres y mujeres.
+Se guardan las proyecciones demográficas de pensionados vivos, tanto para hombres como para mujeres.
 
-```{r proyeccion_pensionados}
+```{r pensionados_vivos}
 
 # Hombres pensionados vivos
 pensionados.vivosh <- pob.pensionados(df.pensionadosh, qx.hombres)
@@ -616,13 +612,13 @@ Como primer paso, se extraen los dataframes necesarios.
 df.activos.fallecidosm <- as.data.frame(activos.fallecidosm[[1]])
 df.activos.fallecidosh <- as.data.frame(activos.fallecidosh[[1]])
 
-#eliminar 2023 con 0 muertes
+# Se elimina el 2023, ya que tiene 0 muertes
 df.activos.fallecidosh <- df.activos.fallecidosh[-1, ]
 df.activos.fallecidosm <- df.activos.fallecidosm[-1, ]
 
 ```
 
-Luego, se crea la funcion necesaria, recibe un dataframe para el calculo y devuelve otro con los resutados. Los años son los mismos, y para el cálculo se extrae la cantidad de muertes por año de empleados activos.
+Luego, se crea la función necesaria, la cual recibe un DataFrame para el calculo, y devuelve otro con los resutados. Los años son los mismos, y para el cálculo se extrae la cantidad de muertes por año de empleados activos.
 
 ```{r beneficio_activos}
 
@@ -653,13 +649,11 @@ ben.muerte.act.m <- ben.muerte.act.m[, -2]
 
 names(ben.muerte.act.h)[names(ben.muerte.act.h) == "año....df...1."] <- "año"
 names(ben.muerte.act.m)[names(ben.muerte.act.m) == "año....df...1."] <- "año"
-
-
 ```
 
 ### Proyección financiera de los pagos de anualidades
 
-La función recibe un df (pensionados/as vivos/as) como parámetro y devuelve uno con las anualidades calculadas. Los años son los mismos. La anualidad se calcula como los 300 000 por la inflación por los pensionados de ese año por 13 (los pagos en los 12 meses más el aguinaldo).  
+La siguiente función recibe un df (pensionados/as vivos/as) como parámetro y devuelve uno con las anualidades calculadas. Los años son los mismos. La anualidad se calcula como los 300 000 por la inflación por los pensionados de ese año por 13 (los pagos en los 12 meses más el aguinaldo).  
 
 ```{r}
 anualidades <- function(df){
@@ -693,22 +687,22 @@ names(anualidades.m)[names(anualidades.m) == "año....df...1."] <- "año"
 
 ### Proyección financiera de los pagos de beneficios de muerte de pensionados
 
-Se procede a realizar la funcion que calcula la proyección de los beneficios de los pesionados que mueren.
+Se procede a realizar la funcion que calcula la proyección de los beneficios de los pensionados fallecidos
 
 ```{r benef.pensionados.muertos}
 
-# Funcion que recibe un df con los pensionados que mueren por ano
+# Función que recibe un DataFrame con los pensionados fallecidos por año
 
-# Devuelve un df con el monto que se debe tener para poder cubrir esta cantidad de muertes cada anno
+# Devuelve un DataFrame con el monto que se debe tener para poder cubrir esta cantidad de muertes cada año
 def.proyeccion.finac.pen <- function(df.pensionados.fallecidos) {
   
   M <- 1e6
   j <- 0.03
   
-  #Se inicializa una lista del tamano de numero de filas del df para asi ir guardando los montos de todos los annos
+  # Se inicializa una lista del tamaño del número de filas del df para así ir guardando los montos de todos los años
   costos <- numeric(nrow(df.pensionados.fallecidos))
   
-  # El for recorre cada año y cada cantidad de muertos por anno, considera la inflacion
+  # El for recorre cada año y cada cantidad de muertos por año, considerando la inflación
   for (i in 1:nrow(df.pensionados.fallecidos)) {
     inflacion <- (1 + j)^(i - 1)
     
@@ -738,7 +732,7 @@ costos.pensionados.fallecidosm <- def.proyeccion.finac.pen(pensionados.fallecido
 
 ### Cálculo de prima anual
 
-Se crea la funcion que calcula primas anuales.
+Se crea la función que calcula primas anuales.
 
 ```{r fun_primas}
 calcular.primas <- function(edad, tabla_mort) {
@@ -780,7 +774,7 @@ calcular.primas <- function(edad, tabla_mort) {
 
 ```
 
-Para almacenar los datos de las primas, se usa como base el dataframe empleados.
+Para almacenar los datos de las primas, se usa como base el DataFrame empleados.
 
 ```{r}
 datos.hombres <- empleados[empleados$sexo == "M", ]
@@ -794,7 +788,7 @@ datos.mujeres <- datos.mujeres[, -c(1, 2, 4, 5)]
 datos.mujeres <- datos.mujeres[!duplicated(datos.mujeres$edad), ]
 ```
 
-Se calculan las primas para hombres y mujeres, y se guardan en el dataframe de datos de cada uno.
+Se calculan las primas para hombres y mujeres, y se guardan en el DataFrame de datos de cada uno.
 
 ```{r}
 resultados.hombres <- lapply(21:65, function(p) calcular.primas(p, qx.hombres))
@@ -830,7 +824,7 @@ print(paste("La prima media nivelada es:", round(prima_nivelada, 2)))
 
 ### Métodos de reducciones de primas en un 10%
 
-En el primer método se va a reducir el monto de la pension por aproximación manual, al reducir los pagos mensuales, los costos mensuales se disminuyen, lo cual resulta beneficioso para la empresa, ya que necesitaria menos fondos para cubrir sus gastos, sin embargo, trae efectos negativos en los empleados, principalmente debido a que el monto de la pension se va a reducir.
+En el primer método se va a reducir el monto de la pension por aproximación manual. Al reducir los pagos mensuales, los costos mensuales se disminuyen, lo cual resulta beneficioso para la empresa, ya que necesitaria menos fondos para cubrir sus gastos. Sin embargo, trae efectos negativos en los empleados, principalmente debido a que el monto de la pension se va a reducir.
 
 ```{r reduccion_primas_1}
 calcular.primas.metodo1 <- function(edad, tabla_mort) {
@@ -880,7 +874,7 @@ datos.hombres[["porcentaje.metodo1"]] <- datos.hombres[["primas_metodo1"]] / dat
 datos.mujeres[["porcentaje.metodo1"]] <- datos.mujeres[["primas_metodo1"]] / datos.mujeres$primas
 ```
 
-Para el segundo método de reducción en un 10% de las primas, se tomaron varios supuestos, primero, ahora las personas se pueden pensionar hasta la edad de 67 años y no a los 65, segundo, el monto de la pensión se redujo en 2 mil colones, lo que puede parecer un monto bajo sin embargo al ser un monto que se paga anualmente hasta que la persona muera se puede convertir en suma bastante considerable, además se redujo el beneficio de muerte de empleado activo a dos millones novecientos mil, y de igual forma el monto de beneficio en caso de muerte del pensionado se disminuyó a setecientos sesenta mil.
+Para el segundo método de reducción en un 10% de las primas, se tomaron varios supuestos. Primero, ahora las personas se pueden pensionar hasta la edad de 67 años y no a los 65; además, el monto de la pensión se redujo en 2 mil colones, lo que puede parecer un monto bajo, pero al ser un monto que se paga anualmente hasta que la persona muera se puede convertir en suma bastante considerable. También se redujo el beneficio de muerte de empleado activo a dos millones novecientos mil, y de igual forma el monto de beneficio en caso de muerte del pensionado se disminuyó a setecientos sesenta mil.
 
 ```{r reduccion_primas_2}
 calcular.primas.metodo2 <- function(edad, tabla_mort) {
@@ -946,9 +940,7 @@ densidad.h <- 1 - sapply(22:116, function(x) qx.hombres[[x, 4 + x]])
 densidad.m <- 1 - sapply(22:116, function(x) qx.mujeres[[x, 4 + x]])
 ```
 
-
-
-Posteriormente, se procede a realizar manualmente la primera iteración del modelo, pues la función recibirá como parámetro la primera prima calculada.
+Posteriormente, se realiza manualmente la primera iteración del modelo, pues la función recibirá como parámetro la primera prima calculada.
 
 ```{r primera_iteracion}
 # Lista para resultados
@@ -998,8 +990,8 @@ matriz.rndh <- t(apply(matriz.rndh, 1, fila.muerte))
 matriz.rndm <- t(apply(matriz.rndm, 1, fila.muerte))
 
 # Índice del primer falso
-idh <- sapply(1:filmat, function(m) which(!matriz.rndh[m, ])[1]) - 1
-idm <- sapply(1:filmat, function(m) which(!matriz.rndm[m, ])[1]) - 1
+idh <- unname(sapply(1:filmat, function(m) which(!matriz.rndh[m, ])[1]) - 1)
+idm <- unname(sapply(1:filmat, function(m) which(!matriz.rndm[m, ])[1]) - 1)
 
 # Anualidades
 anh <- sapply(1:filmat, function(n) sum((1 + j) ^ -(0:(min(idh[n], (65 - 20 - n))))))
@@ -1024,8 +1016,9 @@ Posteriormente, se realiza la función que se encarga de las demás iteraciones 
 ```{r siguientes_iteraciones}
 modelo.estocastico <- function(matriz.prob, prom.primas, densidad, lista.primas){
   while (abs(prom.primas - mean(unlist(lista.primas))) > 0.001) {
-    # Creamos la matriz de números aleatorios
-  matriz.rnd <- matrix(data = pnorm(rnorm(colmat * filmat, 0, sd = 1), mean = 0, sd = 1), nrow = filmat, ncol = colmat)
+    
+  # Creamos la matriz de números aleatorios
+  matriz.rnd <- matrix(data = pnorm(rnorm(colmat * filmat, mean = 0, sd = 1), mean = 0, sd = 1), nrow = filmat, ncol = colmat)
   
   # Comparación de matrices
   matriz.rnd <- matriz.rnd < matriz.prob
@@ -1034,7 +1027,7 @@ modelo.estocastico <- function(matriz.prob, prom.primas, densidad, lista.primas)
   matriz.rnd <- t(apply(matriz.rnd, 1, fila.muerte))
   
   # Índice del primer falso
-  id <- sapply(1:filmat, function(m) which(!matriz.rnd[m, ])[1]) - 1
+  id <- unname(sapply(1:filmat, function(m) which(!matriz.rnd[m, ])[1]) - 1)
   
   # Anualidad
   an <- sapply(1:filmat, function(n) sum((1 + j) ^ -(0:id[n])))
@@ -1050,6 +1043,7 @@ modelo.estocastico <- function(matriz.prob, prom.primas, densidad, lista.primas)
   
   # Primas
   lista.primas <- append(lista.primas, list(ben / an))
+  
   }
   
   # Se devuelven las primas de cada iteración
@@ -1084,8 +1078,6 @@ df.primasm <- data.frame(primas_originales = datos.mujeres$primas,
                          primas_cuartil_50 = apply(matriz.estocm, MARGIN = 1, FUN = median),
                          primas_cuartil_90 = apply(matriz.estocm, MARGIN = 1, FUN = quantile, probs = 0.9))
 ```
-
-
 
 ## Gráficos
 
@@ -1147,4 +1139,89 @@ ggplot(df.grafico, aes(x = años)) +
 # La variable no re ocupará más adelante, por lo que se elimina
 rm(df.grafico)
 ```
+
+```{r comparacion_pensionados}
+# Se crea un DataFrame con los datos necesarios
+df.grafico <- data.frame(
+  años = pensionados.fallecidosh$anno,
+  vivosh = pensionados.vivosh$pensionados,
+  vivosm = pensionados.vivosm$pensionados,
+  defunch = cumsum(pensionados.fallecidosh$pensionados),
+  defuncm = cumsum(pensionados.fallecidosm$pensionados)
+)
+
+df.grafico$sumah <- df.grafico$vivosh + df.grafico$defunch
+df.grafico$sumam <- df.grafico$vivosm + df.grafico$defuncm
+
+# Gráfico para hombres
+ggplot(df.grafico, aes(x = años)) +
+  geom_line(aes(y = vivosh, color = "Vivos por año")) +
+  geom_line(aes(y = defunch, color = "Fallecidos acumulados")) +
+  geom_line(aes(y = sumah, color = "Totales por año")) +
+  labs(
+    x = "Años",
+    y = "Cantidad de personas",
+    caption = "Fuente: elaboración propia"
+  ) +
+  scale_colour_manual(
+    name = "Pensionados",
+    values = c(
+      "Vivos por año" = "skyblue",
+      "Fallecidos acumulados" = "indianred",
+      "Totales por año" = "purple"
+    )
+  ) +
+  theme_minimal()
+
+# Gráfico para mujeres
+ggplot(df.grafico, aes(x = años)) +
+  geom_line(aes(y = vivosm, color = "Vivas por año")) +
+  geom_line(aes(y = defuncm, color = "Fallecidas acumuladas")) +
+  geom_line(aes(y = sumam, color = "Totales por año")) +
+  labs(
+    x = "Años",
+    y = "Cantidad de personas",
+    caption = "Fuente: elaboración propia"
+  ) +
+  scale_colour_manual(
+    name = "Pensionadas",
+    values = c(
+      "Vivas por año" = "cyan2",
+      "Fallecidas acumuladas" = "pink2",
+      "Totales por año" = "orange2"
+    )
+  ) +
+  theme_minimal()
+
+# Se elimina la variable que guarda el gráfico
+rm(df.grafico)
+```
+
+```{r comparacion_primas}
+
+# Gráfico para hombres
+ggplot(df.primash, aes(x = c(21:65))) +
+  geom_line(aes(y = primas_originales, color = "Primas determinísticas")) +
+  geom_line(aes(y = primas_cuartil_50, color = "Cuartíl 50 de Primas estocásticas")) +
+  geom_line(aes(y = primas_cuartil_90, color = "Cuartíl 90 de Primas estocásticas")) +
+  labs(
+    x = "Edades",
+    y = "Prima",
+    caption = "Fuente: elaboración propia"
+  ) +
+  scale_colour_manual(
+    name = "Primas",
+    values = c(
+      "Primas determinísticas" = "skyblue",
+      "Cuartíl 50 de Primas estocásticas" = "indianred",
+      "Cuartíl 90 de Primas estocásticas" = "purple"
+    )
+  ) +
+  theme_minimal()
+
+```
+
+
+
+
 
