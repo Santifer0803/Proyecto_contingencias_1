@@ -951,7 +951,6 @@ densidad.m <- 1 - sapply(22:116, function(x) qx.mujeres[[x, 4 + x]])
 Posteriormente, se procede a realizar manualmente la primera iteración del modelo, pues la función recibirá como parámetro la primera prima calculada.
 
 ```{r primera_iteracion}
-ini <- Sys.time()
 # Lista para resultados
 lista.primash <- list()
 lista.primasm <- list()
@@ -986,9 +985,9 @@ colmat <- ncol(matriz.probh)
 filmat <- nrow(matriz.probm)
 
 # Creamos las matrices de números aleatorios
-matriz.rndh <- matrix(data = pnorm(rnorm(colmat * filmat, mean(densidad.h), sd = sd(densidad.h)), mean = mean(densidad.h), sd = sd(densidad.h)), nrow = filmat, ncol = colmat)
+matriz.rndh <- matrix(data = pnorm(rnorm(colmat * filmat, 0, sd = 1), mean = 0, sd = 1), nrow = filmat, ncol = colmat)
 
-matriz.rndm <- matrix(data = pnorm(rnorm(colmat * filmat, mean(densidad.m), sd = sd(densidad.m)), mean = mean(densidad.m), sd = sd(densidad.m)), nrow = filmat, colmat)
+matriz.rndm <- matrix(data = pnorm(rnorm(colmat * filmat, 0, sd = 1), mean = 0, sd = 1), nrow = filmat, ncol = colmat)
 
 # Comparación de matrices
 matriz.rndh <- matriz.rndh < matriz.probh
@@ -1018,9 +1017,6 @@ benm <- sapply(1:length(annosm.65), function(p) (ifelse(idm + c(21:65) < 65, 500
 # Guardamos el resultado
 lista.primash[[1]] <- (benh / anh)
 lista.primasm[[1]] <- (benm / anm)
-
-fin <- Sys.time()
-print(fin - ini)
 ```
 
 Posteriormente, se realiza la función que se encarga de las demás iteraciones del modelo estocástico.
@@ -1029,7 +1025,7 @@ Posteriormente, se realiza la función que se encarga de las demás iteraciones 
 modelo.estocastico <- function(matriz.prob, prom.primas, densidad, lista.primas){
   while (abs(prom.primas - mean(unlist(lista.primas))) > 0.001) {
     # Creamos la matriz de números aleatorios
-  matriz.rnd <- matrix(data = pnorm(rnorm(colmat * filmat, mean(densidad), sd = sd(densidad)), mean = mean(densidad), sd = sd(densidad)), nrow = filmat, ncol = colmat)
+  matriz.rnd <- matrix(data = pnorm(rnorm(colmat * filmat, 0, sd = 1), mean = 0, sd = 1), nrow = filmat, ncol = colmat)
   
   # Comparación de matrices
   matriz.rnd <- matriz.rnd < matriz.prob
