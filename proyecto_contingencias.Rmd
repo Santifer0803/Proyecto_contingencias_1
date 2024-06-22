@@ -1199,46 +1199,106 @@ rm(df.grafico)
 
 ```{r comparacion_primas}
 
-# Gráfico para hombres
+# Comparación entre los percentiles 50 y 90 de las primas del modelo estocástico (hombres)
+ggplot(df.primash, aes(x = c(21:65))) +
+  geom_line(aes(y = primas_cuartil_50, color = "Cuartíl 50")) +
+  geom_line(aes(y = primas_cuartil_90, color = "Cuartíl 90")) +
+  labs(
+    x = "Edades",
+    y = "Cantidad de Prima",
+    caption = "Fuente: elaboración propia"
+  ) +
+  scale_colour_manual(
+    name = "Primas Estocásticas",
+    values = c(
+      "Cuartíl 50" = "brown3",
+      "Cuartíl 90" = "darkorange2"
+    )
+  ) +
+  theme_minimal()
+
+# Comparación entre los percentiles 50 y 90 de las primas del modelo estocástico (mujeres)
+ggplot(df.primasm, aes(x = c(21:65))) +
+  geom_line(aes(y = primas_cuartil_50, color = "Cuartíl 50")) +
+  geom_line(aes(y = primas_cuartil_90, color = "Cuartíl 90")) +
+  labs(
+    x = "Edades",
+    y = "Cantidad de Prima",
+    caption = "Fuente: elaboración propia"
+  ) +
+  scale_colour_manual(
+    name = "Primas Estocásticas",
+    values = c(
+      "Cuartíl 50" = "yellow3",
+      "Cuartíl 90" = "darkviolet"
+    )
+  ) +
+  theme_minimal()
+
+################################################################################
+
+# Comparación entre las primas originales con los percentiles 50 y 90 de las primas estocásticas (hombres)
 ggplot(df.primash, aes(x = c(21:65))) +
   geom_line(aes(y = primas_originales, color = "Primas determinísticas")) +
   geom_line(aes(y = primas_cuartil_50, color = "Cuartíl 50 de Primas estocásticas")) +
   geom_line(aes(y = primas_cuartil_90, color = "Cuartíl 90 de Primas estocásticas")) +
   labs(
     x = "Edades",
-    y = "Prima",
+    y = "Cantidad de Prima",
     caption = "Fuente: elaboración propia"
   ) +
   scale_colour_manual(
     name = "Primas",
     values = c(
-      "Primas determinísticas" = "skyblue",
-      "Cuartíl 50 de Primas estocásticas" = "indianred",
-      "Cuartíl 90 de Primas estocásticas" = "purple"
+      "Primas determinísticas" = "green4",
+      "Cuartíl 50 de Primas estocásticas" = "brown3",
+      "Cuartíl 90 de Primas estocásticas" = "darkorange2"
+    )
+  ) +
+  theme_minimal()
+
+# Comparación entre las primas originales con los percentiles 50 y 90 de las primas estocásticas (mujeres)
+ggplot(df.primasm, aes(x = c(21:65))) +
+  geom_line(aes(y = primas_originales, color = "Primas determinísticas")) +
+  geom_line(aes(y = primas_cuartil_50, color = "Cuartíl 50 de Primas estocásticas")) +
+  geom_line(aes(y = primas_cuartil_90, color = "Cuartíl 90 de Primas estocásticas")) +
+  labs(
+    x = "Edades",
+    y = "Cantidad de Prima",
+    caption = "Fuente: elaboración propia"
+  ) +
+  scale_colour_manual(
+    name = "Primas",
+    values = c(
+      "Primas determinísticas" = "darkred",
+      "Cuartíl 50 de Primas estocásticas" = "yellow3",
+      "Cuartíl 90 de Primas estocásticas" = "darkviolet"
     )
   ) +
   theme_minimal()
 
 ```
 
-```{r proyeccionfinac_muertes_empleados}
+```{r proyeccion_finac_muertes_empleados}
 costos.pensionados.fallecidosh$genero <- "Hombres"
 costos.pensionados.fallecidosm$genero <- "Mujeres"
 
-# Combinar los dataframes
+# Combinar los DataFrames
 costos.combinados <- rbind(costos.pensionados.fallecidosh, costos.pensionados.fallecidosm)
 
 # Crear el gráfico combinado
-ggplot(costos.combinados, aes(x = anno, y = costo, color = genero)) +
-  geom_line(size = 1) +
-  labs(title = "",
-       x = "Año",
-       y = "Costo ajustado por inflación") +
-  scale_color_manual(values = c("Hombres" = "blue", "Mujeres" = "pink")) +
+ggplot(costos.combinados, aes(x = anno)) +
+  geom_line(aes(y = costo, color = genero), linewidth = 1) +
+  labs(x = "Año",
+       y = "Costo ajustado por inflación",
+       caption = "Fuente: elaboración propia") +
+  scale_color_manual(
+    name = "Género",
+    values = c("Hombres" = "blue", "Mujeres" = "pink")) +
   theme_minimal()
 ```
 
-```{r comparacion_primas_hombres, warning=FALSE}
+```{r tipos_primas_hombres, warning = FALSE}
 # Extraemos las columnas que ocupamos de cada df
 primas.original.h <- datos.hombres[, c("edad", "primas")]
 primas.metodo1.h <- datos.hombres[, c("edad", "primas_metodo1")]
@@ -1248,22 +1308,25 @@ primas.metodo2.h <- primas.metodos[, c("edad", "primas_metodo2.hombres")]
 primas.combinadas.h <- merge(primas.original.h, primas.metodo1.h, by = "edad", all = TRUE)
 primas.combinadas.h <- merge(primas.combinadas.h, primas.metodo2.h, by = "edad", all = TRUE)
 
-
 # Crear el gráfico combinado
-ggplot(primas.combinadas.h) +
-  geom_line(aes(x = edad, y = primas, color = "Original"), size = 0) +
-  geom_line(aes(x = edad, y = primas_metodo1, color = "Método 1"), size = 0) +
-  geom_line(aes(x = edad, y = primas_metodo2.hombres, color = "Método 2"), size = 0) +
-  labs(title = "",
-       x = "Edad",
+ggplot(primas.combinadas.h, aes(x = edad)) +
+  geom_line(aes(y = primas, color = "Original")) +
+  geom_line(aes(y = primas_metodo1, color = "Método 1")) +
+  geom_line(aes(y = primas_metodo2.hombres, color = "Método 2")) +
+  labs(x = "Edad",
        y = "Primas",
-       color = "Tipo de Primas") +
-  scale_color_manual(values = c("Original" = "black", "Método 1" = "blue", "Método 2" = "red")) +
+       caption = "Fuente: elaboración propia") +
+  scale_color_manual(
+    name = "Tipo de Primas",
+    values = c(
+      "Original" = "black", 
+      "Método 1" = "blue", 
+      "Método 2" = "red")) +
   theme_minimal()
 
 ```
 
-```{r comparacion_primas_mujeres, warning=FALSE}
+```{r tipo_primas_mujeres, warning = FALSE}
 # Extraemos las columnas que ocupamos de cada df
 primas_original <- datos.mujeres[, c("edad", "primas")]
 primas_metodo1 <- datos.mujeres[, c("edad", "primas_metodo1")]
@@ -1275,15 +1338,18 @@ primas_combinadas <- merge(primas_combinadas, primas_metodo2, by = "edad", all =
 
 
 # Crear el gráfico combinado
-ggplot(primas_combinadas) +
-  geom_line(aes(x = edad, y = primas, color = "Original"), size = 0) +
-  geom_line(aes(x = edad, y = primas_metodo1, color = "Método 1"), size = 0) +
-  geom_line(aes(x = edad, y = primas_metodo2.mujeres, color = "Método 2"), size = 0) +
-  labs(title = "",
-       x = "Edad",
+ggplot(primas_combinadas, aes(x = edad)) +
+  geom_line(aes(y = primas, color = "Original")) +
+  geom_line(aes(y = primas_metodo1, color = "Método 1")) +
+  geom_line(aes(y = primas_metodo2.mujeres, color = "Método 2")) +
+  labs(x = "Edad",
        y = "Primas",
-       color = "Tipo de Primas") +
-  scale_color_manual(values = c("Original" = "black", "Método 1" = "blue", "Método 2" = "red")) +
+       caption = "Fuente: elaboración propia") +
+  scale_color_manual(
+    name = "Tipo de Primas",
+    values = c("Original" = "salmon4", 
+               "Método 1" = "blue", 
+               "Método 2" = "green")) +
   theme_minimal()
 
 ```
