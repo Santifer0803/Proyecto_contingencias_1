@@ -1240,11 +1240,11 @@ Posteriormente, los gráficos de comparación de primas.
 
 # Comparación entre los percentiles 50 y 90 de las primas del modelo estocástico (hombres)
 ggplot(df.primash, aes(x = c(21:65))) +
-  geom_line(aes(y = primas_cuartil_50, color = "Cuartíl 50")) +
-  geom_line(aes(y = primas_cuartil_90, color = "Cuartíl 90")) +
+  geom_line(aes(y = (primas_cuartil_50 / 1000000), color = "Cuartíl 50")) +
+  geom_line(aes(y = (primas_cuartil_90 / 1000000), color = "Cuartíl 90")) +
   labs(
     x = "Edades",
-    y = "Cantidad de Prima",
+    y = "Cantidad de Prima (millones)",
     caption = "Fuente: elaboración propia"
   ) +
   scale_colour_manual(
@@ -1258,11 +1258,11 @@ ggplot(df.primash, aes(x = c(21:65))) +
 
 # Comparación entre los percentiles 50 y 90 de las primas del modelo estocástico (mujeres)
 ggplot(df.primasm, aes(x = c(21:65))) +
-  geom_line(aes(y = primas_cuartil_50, color = "Cuartíl 50")) +
-  geom_line(aes(y = primas_cuartil_90, color = "Cuartíl 90")) +
+  geom_line(aes(y = (primas_cuartil_50 / 1000000), color = "Cuartíl 50")) +
+  geom_line(aes(y = (primas_cuartil_90 / 1000000), color = "Cuartíl 90")) +
   labs(
     x = "Edades",
-    y = "Cantidad de Prima",
+    y = "Cantidad de Prima (millones)",
     caption = "Fuente: elaboración propia"
   ) +
   scale_colour_manual(
@@ -1278,40 +1278,40 @@ ggplot(df.primasm, aes(x = c(21:65))) +
 
 # Comparación entre las primas originales con los percentiles 50 y 90 de las primas estocásticas (hombres)
 ggplot(df.primash, aes(x = c(21:65))) +
-  geom_line(aes(y = primas_originales, color = "Primas determinísticas")) +
-  geom_line(aes(y = primas_cuartil_50, color = "Cuartíl 50 de Primas estocásticas")) +
-  geom_line(aes(y = primas_cuartil_90, color = "Cuartíl 90 de Primas estocásticas")) +
+  geom_line(aes(y = (primas_originales / 1000000), color = "Primas determinísticas")) +
+  geom_line(aes(y = (primas_cuartil_50 / 1000000), color = "Cuartíl 50 de primas estocásticas")) +
+  geom_line(aes(y = (primas_cuartil_90 / 1000000), color = "Cuartíl 90 de primas estocásticas")) +
   labs(
     x = "Edades",
-    y = "Cantidad de Prima",
+    y = "Cantidad de Prima (millones)",
     caption = "Fuente: elaboración propia"
   ) +
   scale_colour_manual(
     name = "Primas",
     values = c(
       "Primas determinísticas" = "green4",
-      "Cuartíl 50 de Primas estocásticas" = "brown3",
-      "Cuartíl 90 de Primas estocásticas" = "darkorange2"
+      "Cuartíl 50 de primas estocásticas" = "brown3",
+      "Cuartíl 90 de primas estocásticas" = "darkorange2"
     )
   ) +
   theme_minimal()
 
 # Comparación entre las primas originales con los percentiles 50 y 90 de las primas estocásticas (mujeres)
 ggplot(df.primasm, aes(x = c(21:65))) +
-  geom_line(aes(y = primas_originales, color = "Primas determinísticas")) +
-  geom_line(aes(y = primas_cuartil_50, color = "Cuartíl 50 de Primas estocásticas")) +
-  geom_line(aes(y = primas_cuartil_90, color = "Cuartíl 90 de Primas estocásticas")) +
+  geom_line(aes(y = (primas_originales / 1000000), color = "Primas determinísticas")) +
+  geom_line(aes(y = (primas_cuartil_50 / 1000000), color = "Cuartíl 50 de primas estocásticas")) +
+  geom_line(aes(y = (primas_cuartil_90 / 1000000), color = "Cuartíl 90 de primas estocásticas")) +
   labs(
     x = "Edades",
-    y = "Cantidad de Prima",
+    y = "Cantidad de Prima (millones)",
     caption = "Fuente: elaboración propia"
   ) +
   scale_colour_manual(
     name = "Primas",
     values = c(
       "Primas determinísticas" = "darkred",
-      "Cuartíl 50 de Primas estocásticas" = "yellow3",
-      "Cuartíl 90 de Primas estocásticas" = "darkviolet"
+      "Cuartíl 50 de primas estocásticas" = "yellow3",
+      "Cuartíl 90 de primas estocásticas" = "darkviolet"
     )
   ) +
   theme_minimal()
@@ -1329,9 +1329,9 @@ costos.combinados <- rbind(costos.pensionados.fallecidosh, costos.pensionados.fa
 
 # Crear el gráfico combinado
 ggplot(costos.combinados, aes(x = anno)) +
-  geom_line(aes(y = costo, color = genero), linewidth = 1) +
+  geom_line(aes(y = (costo / 1000000), color = genero), linewidth = 1) +
   labs(x = "Año",
-       y = "Costo ajustado por inflación",
+       y = "Costo ajustado por inflación (millones)",
        caption = "Fuente: elaboración propia") +
   scale_color_manual(
     name = "Género",
