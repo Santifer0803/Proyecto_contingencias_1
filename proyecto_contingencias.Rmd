@@ -3,7 +3,9 @@ title: "proyecto_contingencias"
 author: "Alejandro Brenes - C21319, Santiago Fernández - C22943, Félix Madrigal -
   C24459 y Eyeri Méndez - C24765"
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  rmdformats::robobook:
+    number_sections: TRUE
 ---
 
 # Proyecto Contingencias de Vida I
@@ -608,7 +610,7 @@ pensionados.fallecidosm <- def.pensionados(df.pensionadosm, qx.mujeres)
 
 Como primer paso, se extraen los dataframes necesarios.
 
-```{r}
+```{r datos_activos}
 df.activos.fallecidosm <- as.data.frame(activos.fallecidosm[[1]])
 df.activos.fallecidosh <- as.data.frame(activos.fallecidosh[[1]])
 
@@ -630,9 +632,9 @@ ben.muerte.activos <- function(df){
   vec_beneficios = c()
   for (i in 1:47) {
     beneficio <- (5000000)*((1 + 0.03)^i) * (df[i, 2]) 
-    vec_beneficios <- c(vec_beneficios, beneficio)
+    vec_beneficios <- c(vec_beneficios, beneficio) #se almacenan los beneficios en un vector
   }
-  df.ben.muerte.activos$beneficios <- vec_beneficios
+  df.ben.muerte.activos$beneficios <- vec_beneficios #se guardan en el df
   return(df.ben.muerte.activos)
 }
 
@@ -640,7 +642,7 @@ ben.muerte.activos <- function(df){
 
 Se guardan y se limpian los resultados tanto para hombres como para mujeres
 
-```{r}
+```{r  beneficios_muerte_activos}
 ben.muerte.act.h <- ben.muerte.activos(df.activos.fallecidosh)
 ben.muerte.act.m <- ben.muerte.activos(df.activos.fallecidosm)
 
@@ -653,9 +655,9 @@ names(ben.muerte.act.m)[names(ben.muerte.act.m) == "año....df...1."] <- "año"
 
 ### Proyección financiera de los pagos de anualidades
 
-La siguiente función recibe un df (pensionados/as vivos/as) como parámetro y devuelve uno con las anualidades calculadas. Los años son los mismos. La anualidad se calcula como los 300 000 por la inflación por los pensionados de ese año por 13 (los pagos en los 12 meses más el aguinaldo).  
+La siguiente función recibe un df (pensionados/as vivos/as) como parámetro y devuelve uno con las anualidades calculadas. Los años son los mismos. La anualidad se calcula como los 300 000 por la inflación por los pensionados de ese año por 13 (los pagos en los 12 meses más el aguinaldo).
 
-```{r}
+```{r pago_aunalidades}
 anualidades <- function(df){
   df.anualidades <- data.frame(
     año <- df[, 1],
@@ -664,16 +666,16 @@ anualidades <- function(df){
   vec.anualidades <- c()
   for (i in 1:length(pensionados.vivosh[,1])){
     anualidad <- 13*(300000*(1+0.03)^i)*(df[i, 2])
-    vec.anualidades <- c(vec.anualidades, anualidad)
+    vec.anualidades <- c(vec.anualidades, anualidad) #se guardan las anualidades en un vector
   }
-  df.anualidades$anualidades <- vec.anualidades
+  df.anualidades$anualidades <- vec.anualidades #se almacenan en el df
   return(df.anualidades)
 }
 ```
 
 Se guardan y se limpian los resultados tanto para hombres como para mujeres
 
-```{r}
+```{r resultados_anualidades}
 anualidades.h <- anualidades(pensionados.vivosh)
 anualidades.m <- anualidades(pensionados.vivosm)
 
@@ -749,7 +751,7 @@ calcular.primas <- function(edad, tabla_mort) {
   ben_muerte_pens <-
     1000000 * Ax(65, (2024 + 65 - edad), tabla_mort, 115, tasa_j_eq) * ((1 / (1 + tasa_j_eq)) ^ (65 - edad)) * calcular.kpx(edad, (65 - edad), tabla_mort)
   
-  # Pensión
+  # Anualidad de la pensión
   ben_anualidades <-
     13 * 300000 * (((1 - Ax(
       65, (2024 + 65 - edad), tabla_mort, 115, tasa_j_eq
@@ -776,7 +778,7 @@ calcular.primas <- function(edad, tabla_mort) {
 
 Para almacenar los datos de las primas, se usa como base el DataFrame empleados.
 
-```{r}
+```{r datos_para_primas}
 datos.hombres <- empleados[empleados$sexo == "M", ]
 
 datos.hombres <- datos.hombres[, -c(1, 2, 4, 5)] 
@@ -790,7 +792,7 @@ datos.mujeres <- datos.mujeres[!duplicated(datos.mujeres$edad), ]
 
 Se calculan las primas para hombres y mujeres, y se guardan en el DataFrame de datos de cada uno.
 
-```{r}
+```{r resultados_primas}
 resultados.hombres <- lapply(21:65, function(p) calcular.primas(p, qx.hombres))
 primas.hombres <- sapply(resultados.hombres, function(res) res$prima)
 vp.hombres <- sapply(resultados.hombres, function(res) res$vp)
@@ -804,7 +806,7 @@ anualidad.mujeres <- sapply(resultados.mujeres, function(res) res$anualidad)
 
 Se agregan las columnas correspondientes.
 
-```{r}
+```{r primas_vp_anualidades}
 datos.hombres[["primas"]] <- primas.hombres
 datos.hombres[["vp"]] <- vp.hombres
 datos.hombres[["anualidad"]] <- anualidad.hombres
@@ -816,7 +818,7 @@ datos.mujeres[["anualidad"]] <- anualidad.mujeres
 
 La prima nivelada.
 
-```{r}
+```{r prima_nivelada}
 prima_nivelada <- (sum(datos.hombres$vp) + sum(datos.mujeres$vp)) / (sum(datos.hombres$anualidad) + sum(datos.mujeres$anualidad))
 
 print(paste("La prima media nivelada es:", round(prima_nivelada, 2)))
@@ -1321,6 +1323,25 @@ ggplot(df.primasm, aes(x = c(21:65))) +
 Siguiendo con los gráficos de proyecciones financieras.
 
 ```{r proyeccion_finac_muertes_empleados}
+ben.muerte.act.h$genero <- "Hombres"
+ben.muerte.act.m$genero <- "Mujeres"
+
+# Combinar los DataFrames
+beneficios.combinados <- rbind(ben.muerte.act.h, ben.muerte.act.m)
+
+# Crear el gráfico combinado
+ggplot(beneficios.combinados, aes(x = año)) +
+  geom_line(aes(y = (beneficios / 1000000), color = genero), linewidth = 1) +
+  labs(x = "Año",
+       y = "Costo ajustado por inflación (millones)",
+       caption = "Fuente: elaboración propia") +
+  scale_color_manual(
+    name = "Género",
+    values = c("Hombres" = "blue", "Mujeres" = "pink")) +
+  theme_minimal()
+```
+
+```{r proyeccion_finac_muertes_pensionados}
 costos.pensionados.fallecidosh$genero <- "Hombres"
 costos.pensionados.fallecidosm$genero <- "Mujeres"
 
@@ -1337,6 +1358,50 @@ ggplot(costos.combinados, aes(x = anno)) +
     name = "Género",
     values = c("Hombres" = "blue", "Mujeres" = "pink")) +
   theme_minimal()
+```
+
+```{r proyeccion.finac.anualidades}
+anualidades.h$genero <- "Hombres"
+anualidades.m$genero <- "Mujeres"
+
+# Combinar los DataFrames
+anualidades.combinadas <- rbind(anualidades.h, anualidades.m)
+
+# Crear el gráfico combinado
+ggplot(anualidades.combinadas, aes(x = año)) +
+  geom_line(aes(y = (anualidades/ 1000000), color = genero), linewidth = 1) +
+  labs(x = "Año",
+       y = "Costo ajustado por inflación (millones)",
+       caption = "Fuente: elaboración propia") +
+  scale_color_manual(
+    name = "Género",
+    values = c("Hombres" = "blue", "Mujeres" = "pink")) +
+  theme_minimal()
+```
+
+Gráficos de las primas
+
+```{r primas}
+
+datos.hombres$genero <- "Hombres"
+datos.mujeres$genero <- "Mujeres"
+
+# Combinar los DataFrames
+primas.combinadas <- rbind(datos.hombres, datos.mujeres)
+
+primas.combinadas[is.na(primas.combinadas)] <- 0
+
+# Crear el gráfico combinado
+ggplot(primas.combinadas, aes(x = edad)) +
+  geom_line(aes(y = (primas/1000000), color = genero), linewidth = 1) +
+  labs(x = "Edad",
+       y = "Primas por pagar (millones)",
+       caption = "Fuente: elaboración propia") +
+  scale_color_manual(
+    name = "Género",
+    values = c("Hombres" = "blue", "Mujeres" = "pink")) +
+  theme_minimal()
+
 ```
 
 Luego, las comparaciones de primas para hombres.
@@ -1385,6 +1450,3 @@ ggplot(primas.combinadas, aes(x = edad)) +
 # Se eliminan las variables innecesarias
 rm(primas.metodo1, primas.metodo2, primas.combinadas)
 ```
-
-
-
