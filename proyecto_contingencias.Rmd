@@ -880,7 +880,7 @@ datos.mujeres$porcentaje.metodo1 <- datos.mujeres$primas.metodo1 / datos.mujeres
 
 Seguidamente se calculará el promedio de las primas del método 1 y el promedio de las primas originales, para ambos sexos, para luego dividir, respectivamente, estos dos resultados, con el fin de notar que se logra reducir en promedio las primas en un $10\%$.
 
-```{r promedio_metodo2}
+```{r promedio_metodo1}
 mean(datos.hombres$primas.metodo1[1:45]) / mean(datos.hombres$primas[1:45])
 mean(datos.mujeres$primas.metodo1[1:45]) / mean(datos.mujeres$primas[1:45])
 ```
@@ -919,7 +919,7 @@ calcular.primas.metodo2 <- function(edad, tabla_mort) {
 }
 ```
 
-```{r reduccion_primas_metodo1}
+```{r reduccion_primas_metodo2}
 fila.nula1 <- data.frame(edad = NA, primas = NA, primas.metodo1 = NA, porcentaje.metodo1 = NA)
 fila.nula2 <- data.frame(edad = NA, primas = NA, primas.metodo1 = NA, porcentaje.metodo1 = NA)
 
