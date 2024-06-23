@@ -1103,15 +1103,16 @@ En esta sección se pondrán todos los gráficos que se presenten para el proyec
 ```{r bd_empleados}
 # Gráfico de edades de los empleados
 ggplot(empleados, aes(x = edad)) +
-  geom_histogram(binwidth = 1, fill = "bisque3", color = "black") +
+  geom_histogram(binwidth = 1, fill = "seagreen3", color = "black") +
   labs(x = "Edad", y = "Cantidad", caption = "Fuente: elaboración propia") +
   theme_minimal()
 
 # Gráfico de sexos de la empresa
-ggplot(empleados, aes(x = sexo)) +
-  geom_bar(fill = "cornflowerblue") +
+ggplot(empleados, aes(x = sexo, fill = sexo)) +
+  geom_bar() +
   labs(x = "Sexo", y = "Cantidad", caption = "Fuente: elaboración propia") +
-  theme_minimal()
+  theme_minimal() +
+  scale_fill_manual(values = c("cornflowerblue", "lightcoral"))
 ```
 
 Después, las proyecciones demográficas de empleados activos.
