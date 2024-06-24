@@ -1236,7 +1236,7 @@ ggplot(df.grafico, aes(x = años)) +
 rm(df.grafico)
 ```
 
-Posteriormente, los gráficos de comparación de primas.
+Posteriormente, los gráficos de comparación de primas. Primero se compararán los percentiles 50 y 90 de las primas estocásticas obtenidas, para luego hacer la comparación entre las primas estocásticas y las primas deterministas. Para esto, se calculará el promedio de los cuartíles 50 y 90 de las primas estocásticas y el promedio de las primas determinísticas.
 
 ```{r comparacion_primas}
 
@@ -1278,45 +1278,43 @@ ggplot(df.primasm, aes(x = c(21:65))) +
 
 ################################################################################
 
-# Comparación entre las primas originales con los percentiles 50 y 90 de las primas estocásticas (hombres)
-ggplot(df.primash, aes(x = c(21:65))) +
-  geom_line(aes(y = (primas_originales / 1000000), color = "Primas determinísticas")) +
-  geom_line(aes(y = (primas_cuartil_50 / 1000000), color = "Cuartíl 50 de primas estocásticas")) +
-  geom_line(aes(y = (primas_cuartil_90 / 1000000), color = "Cuartíl 90 de primas estocásticas")) +
-  labs(
-    x = "Edades",
-    y = "Cantidad de Prima (millones)",
-    caption = "Fuente: elaboración propia"
-  ) +
-  scale_colour_manual(
-    name = "Primas",
-    values = c(
-      "Primas determinísticas" = "green4",
-      "Cuartíl 50 de primas estocásticas" = "brown3",
-      "Cuartíl 90 de primas estocásticas" = "darkorange2"
-    )
-  ) +
-  theme_minimal()
+# Dataframe con los datos a graficar
+promedio.primas <- data.frame(
+  primas = names(df.primash),
+  promedios = colMeans(df.primash / 1000000)
+)
 
-# Comparación entre las primas originales con los percentiles 50 y 90 de las primas estocásticas (mujeres)
-ggplot(df.primasm, aes(x = c(21:65))) +
-  geom_line(aes(y = (primas_originales / 1000000), color = "Primas determinísticas")) +
-  geom_line(aes(y = (primas_cuartil_50 / 1000000), color = "Cuartíl 50 de primas estocásticas")) +
-  geom_line(aes(y = (primas_cuartil_90 / 1000000), color = "Cuartíl 90 de primas estocásticas")) +
-  labs(
-    x = "Edades",
-    y = "Cantidad de Prima (millones)",
-    caption = "Fuente: elaboración propia"
-  ) +
-  scale_colour_manual(
-    name = "Primas",
-    values = c(
-      "Primas determinísticas" = "darkred",
-      "Cuartíl 50 de primas estocásticas" = "yellow3",
-      "Cuartíl 90 de primas estocásticas" = "darkviolet"
-    )
-  ) +
-  theme_minimal()
+# Nombres para las categorías del eje x
+primas = c("Cuartíl 50", "Cuartíl 90", "Determinísticas")
+
+# Comparación entre las primas originales con los percentiles 50 y 90 de las primas estocásticas (hombres)
+ggplot(promedio.primas, aes(x = primas, y = promedios, fill = primas)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(x = "Primas",
+       y = "Promedio (en millones)",
+       caption = "Fuente: Elaboración propia") +
+  scale_fill_manual(values = c("cyan2", "violet", "salmon")) +
+  theme(legend.position = "none") +
+  scale_x_discrete(labels = primas)
+
+# De igual manera se hace el gráfico para las mujeres
+promedio.primasm <- data.frame(
+  primas = names(df.primasm),
+  promedios = colMeans(df.primasm / 1000000)
+)
+
+ggplot(promedio.primasm, aes(x = primas, y = promedios, fill = primas)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(x = "Primas",
+       y = "Promedio (en millones)",
+       caption = "Fuente: Elaboración propia") +
+  scale_fill_manual(values = c("aquamarine2", "blueviolet", "coral")) +
+  theme(legend.position = "none") +
+  scale_x_discrete(labels = primas)
+
+rm(promedio.primas, primas)
 
 ```
 
