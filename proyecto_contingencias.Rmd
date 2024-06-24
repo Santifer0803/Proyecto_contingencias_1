@@ -1387,7 +1387,6 @@ datos.mujeres$genero <- "Mujeres"
 # Combinar los DataFrames
 primas.combinadas <- rbind(datos.hombres, datos.mujeres)
 
-primas.combinadas[is.na(primas.combinadas)] <- 0
 
 # Crear el gráfico combinado
 ggplot(primas.combinadas, aes(x = edad)) +
