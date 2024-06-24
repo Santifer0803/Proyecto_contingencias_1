@@ -1,5 +1,5 @@
 ---
-title: "proyecto_contingencias"
+title: "Proyecto_contingencias"
 author: "Alejandro Brenes - C21319, Santiago Fernández - C22943, Félix Madrigal -
   C24459 y Eyeri Méndez - C24765"
 date: "`r Sys.Date()`"
@@ -1400,6 +1400,7 @@ ggplot(primas.combinadas, aes(x = edad)) +
   scale_color_manual(
     name = "Género",
     values = c("Hombres" = "blue", "Mujeres" = "pink")) +
+  geom_hline(yintercept = (prima_nivelada / 1000000), linetype = "dashed", linewidth = 1, color = "magenta3") +
   theme_minimal()
 
 ```
